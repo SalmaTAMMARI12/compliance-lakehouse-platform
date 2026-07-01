@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+.venv/
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Données sensibles
+data/private/
+
+# Secrets
+.env
+
+# MinIO
+minio/data/
+
+# PostgreSQL
+postgres_data/
+
+# Airflow
+airflow/logs/
