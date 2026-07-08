@@ -1,0 +1,51 @@
+services:
+  postgres:
+      image: postgres:16-alpine
+      container_name: dgssi-postgres
+      ports:
+        - "5432:5432"
+      environment:
+        POSTGRES_DB: ${POSTGRES_DB:-dgssi}
+        POSTGRES_USER: ${POSTGRES_USER:-dgssi}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dgssi}"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+  minio:
+    image: minio/minio:latest
+    container_name: dgssi-minio
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-dgssi_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-changeme123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nifi:
+    image: apache/nifi:1.27.0
+    container_name: dgssi-nifi
+    ports:
+      - "8443:8443"   # Interface web NiFi (HTTPS)
+    environment:
+      SINGLE_USER_CREDENTIALS_USERNAME: admin
+      SINGLE_USER_CREDENTIALS_PASSWORD: dgssiAdmin123!   # 12 caractères minimum, exigé par NiFi
+    volumes:
+      - nifi_data:/opt/nifi/nifi-current/conf
+      - ./data/private:/data/depot_local   # dossier local surveillé par NiFi
+
+volumes:
+  minio_data:
+  nifi_data:
+  postgres_data:

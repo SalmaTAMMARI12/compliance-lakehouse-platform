@@ -1,0 +1,69 @@
+# Référentiel DNSSI v2 — données réglementaires stables, communes à tous les
+# rapports d'audit de conformité DNSSI, indépendamment du prestataire.
+# Source : rapport PASSI de référence, pages 5-6, vérifié ligne par ligne.
+
+chapitres:
+  - numero: 1
+    nom: "Politique de sécurité des systèmes d'information"
+  - numero: 2
+    nom: "Organisation de la sécurité des systèmes d'information"
+  - numero: 3
+    nom: "Sécurité des ressources humaines"
+  - numero: 4
+    nom: "Gestion des actifs informationnels"
+  - numero: 5
+    nom: "Contrôle d'accès"
+  - numero: 6
+    nom: "Cryptographie"
+  - numero: 7
+    nom: "Sécurité physique et environnementale"
+  - numero: 8
+    nom: "Sécurité liée à l'exploitation"
+  - numero: 9
+    nom: "Sécurité des communications"
+  - numero: 10
+    nom: "Acquisition, développement et maintenance des systèmes d'information"
+  - numero: 11
+    nom: "Relations avec les fournisseurs"
+  - numero: 12
+    nom: "Gestion des incidents de cybersécurité"
+  - numero: 13
+    nom: "Gestion de la continuité de l'activité"
+  - numero: 14
+    nom: "Conformité"
+
+echelle_conformite:
+  - valeur: "N/A"
+    description: "L'entité ou l'IIV n'est pas concernée par la règle (à justifier)"
+  - valeur: "Conforme"
+    description: "L'entité ou l'IIV répond à toutes les exigences de la règle"
+  - valeur: "Non conforme"
+    description: "L'entité ou l'IIV ne répond pas aux exigences de la règle"
+
+classification_ecarts:
+  - type: "significatif"
+    description: "Susceptible de remettre en cause à lui seul les activités de l'objet de l'audit"
+  - type: "non_significatif"
+    description: "Nécessite une action corrective, sans porter atteinte seul aux activités"
+  - type: "remarque"
+    description: "N'engendre pas de risque, bonne pratique ou évolution possible"
+
+echelle_criticite_technique:
+  - valeur: "CRITIQUE"
+    description: "Mesures à prendre immédiatement pour réduire les risques"
+  - valeur: "ELEVEE"
+    description: "Mesures à prendre dans un court délai"
+  - valeur: "MOYENNE"
+    description: "Mesures à prendre dans un délai moyen"
+  - valeur: "FAIBLE"
+    description: "Notes d'information sur des pratiques peu recommandées, sans impact prouvé"
+
+cadre_reglementaire:
+  - reference: "Loi 05-20"
+    intitule: "Loi relative à la cybersécurité"
+  - reference: "Décret n°2-21-406"
+    date_publication: "2021-07-15"
+    intitule: "Pris pour l'application de la loi 05-20 sur la cybersécurité"
+  - reference: "DNSSI"
+    base_normative: "ISO/IEC 27002:2013"
+    intitule: "Directive Nationale de la Sécurité des Systèmes d'Information"

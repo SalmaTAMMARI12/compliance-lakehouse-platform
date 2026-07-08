@@ -1,0 +1,19 @@
+app:
+  name: dgssi-platform
+  version: "0.1.0"
+
+storage:
+  buckets:
+    bronze: bronze
+    silver: silver
+    gold: gold
+    logs: logs
+
+pipeline:
+  statuses:
+    - recu
+    - parse
+    - extrait
+    - valide
+    - conforme_calcule
+    - echec
