@@ -6,7 +6,7 @@ Chaque champ est traçable à une page précise du rapport de référence
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 

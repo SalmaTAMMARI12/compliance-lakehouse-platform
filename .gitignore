@@ -28,4 +28,4 @@ minio/data/
 postgres_data/
 
 # Airflow
-airflow/logs/
+airflow/logs/.coverage
