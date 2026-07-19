@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 
 from dgssi_platform.domain.interfaces.parseur import DocumentBrut
+from dgssi_platform.domain.services.calculer_taux_conformite import (
+    calculer_couverture_referentiel,
+)
 from dgssi_platform.domain.services.moteur_conformite import (
     classer_elements_par_exposition,
     compter_ecarts_critiques,
@@ -25,6 +28,7 @@ from dgssi_platform.infrastructure.database.repositories.conformite_repository i
 )
 from dgssi_platform.infrastructure.extraction.extracteur_hybride import ExtracteurHybride
 from dgssi_platform.infrastructure.parsing.docling.docling_parseur import DoclingParseur
+from dgssi_platform.infrastructure.referentiel.loader import obtenir_exigences
 from dgssi_platform.infrastructure.storage.minio_client import (
     telecharger_json,
     telecharger_objet,
@@ -67,6 +71,17 @@ def traiter(nom_fichier_bronze: str) -> None:
     if erreurs_validation:
         logger.warning("Audit extrait avec des incohérences : %s", erreurs_validation)
 
+    # 4bis. Couverture référentiel — diagnostic : révèle si ChapitreAudit.clauses
+    # est peuplé par l'extraction actuelle ou encore vide
+    exigences = obtenir_exigences()
+    couverture = calculer_couverture_referentiel(audit, exigences)
+    logger.info(
+        "Couverture référentiel : %s%% (%d/%d exigences couvertes)",
+        couverture["taux_couverture_referentiel"],
+        couverture["nb_exigences_couvertes"],
+        couverture["nb_exigences_attendues"],
+    )
+
     # 5. Gold
     upload_json("gold", f"{nom_document}.json", audit.model_dump())
     logger.info("Gold écrit : gold/%s.json", nom_document)
@@ -97,6 +112,7 @@ def traiter(nom_fichier_bronze: str) -> None:
     print(f"  Taux de conformité       : {audit.taux_conformite_global}%")
     print(f"  Écarts critiques         : {nb_critiques}")
     print(f"  Élément le plus exposé   : {element_expose}")
+    print(f"  Couverture référentiel   : {couverture['taux_couverture_referentiel']}% ({couverture['nb_exigences_couvertes']}/{couverture['nb_exigences_attendues']})")
     print(f"  Erreurs de validation    : {erreurs_validation or 'AUCUNE'}")
     print("=" * 60)
 

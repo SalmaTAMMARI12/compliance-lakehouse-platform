@@ -45,7 +45,35 @@ services:
       - nifi_data:/opt/nifi/nifi-current/conf
       - ./data/private:/data/depot_local   # dossier local surveillé par NiFi
 
+  airflow:
+    build:
+      context: .
+      dockerfile: docker/airflow/Dockerfile
+    container_name: dgssi-airflow
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_HOST: dgssi-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-dgssi}
+      POSTGRES_USER: ${POSTGRES_USER:-dgssi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      MINIO_ENDPOINT: dgssi-minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-dgssi_admin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-changeme123}
+    volumes:
+      - .:/opt/airflow/project
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_data:/opt/airflow
+    command: standalone
+    depends_on:
+      - postgres
+      - minio
+
 volumes:
   minio_data:
   nifi_data:
   postgres_data:
+  airflow_data:

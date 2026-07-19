@@ -1,0 +1,166 @@
+# referentiel_legal.yaml
+# Couvre les couches 1 (textes), 3 (obligations légales), 4 (périodicités/types d'audits)
+# du référentiel de conformité — complète dnssi_v2.yaml (couche 2, déjà en place).
+#
+# Source principale : Décret n° 2-21-406 du 4 hija 1442 (15 juillet 2021) pris pour
+# l'application de la loi n° 05-20 relative à la cybersécurité.
+# NB : texte vérifié sur une version "projet de décret" largement diffusée et cohérente
+# avec toutes les sources secondaires trouvées (ANRT, DGSSI, presse). À recouper avec le
+# PDF officiel du Bulletin Officiel (BORM n°7011 du 9 août 2021) avant citation dans un
+# mémoire si vous avez besoin d'une garantie absolue sur la numérotation des articles.
+
+textes_reglementaires:
+  - id: loi_05_20
+    type: loi
+    nom: "Loi n° 05-20 relative à la cybersécurité"
+    date_promulgation: "2020-07-25"
+    dahir: "1-20-69"
+
+  - id: decret_2_21_406
+    type: decret
+    nom: "Décret n° 2-21-406 pris pour l'application de la loi n° 05-20"
+    date: "2021-07-15"
+    date_publication_bo: "2021-08-09"
+    reference_bo: "BORM n° 7011"
+
+  - id: dnssi_v2
+    type: circulaire
+    nom: "Directive Nationale de la Sécurité des Systèmes d'Information (DNSSI) v2"
+    reference: "Circulaire n° 2/2023 du Chef du Gouvernement"
+    date: "2023-01-12"
+
+# --- Annexe 1 du décret : secteurs IIV et autorité de coordination ---
+secteurs_iiv:
+  - id: securite_publique
+    nom: "Secteur de la sécurité publique"
+    autorite_coordination: "Autorité gouvernementale chargée de l'intérieur"
+  - id: affaires_etrangeres
+    nom: "Secteur des affaires étrangères"
+    autorite_coordination: "Autorité gouvernementale chargée des affaires étrangères"
+  - id: finances
+    nom: "Secteur des finances"
+    autorite_coordination: "Autorité gouvernementale chargée des finances"
+  - id: legislation
+    nom: "Secteur de la législation"
+    autorite_coordination: "Secrétariat général du gouvernement"
+  - id: agriculture
+    nom: "Secteur de l'agriculture"
+    autorite_coordination: "Autorité gouvernementale chargée de l'agriculture"
+  - id: sante
+    nom: "Secteur de la santé"
+    autorite_coordination: "Autorité gouvernementale chargée de la santé"
+  - id: industrie_commerce_numerique
+    nom: "Secteurs de l'industrie, du commerce et de l'économie numérique"
+    autorite_coordination: "Autorité gouvernementale chargée de l'industrie, du commerce et de l'économie numérique"
+  - id: communication_audiovisuelle
+    nom: "Secteur de la communication audiovisuelle"
+    autorite_coordination: "Autorité gouvernementale chargée de la communication"
+  - id: energie
+    nom: "Secteur de la production et de la distribution de l'énergie"
+    autorite_coordination: "Autorité gouvernementale chargée de l'intérieur / Autorité gouvernementale chargée de l'énergie"
+  - id: mines
+    nom: "Secteur des mines"
+    autorite_coordination: "Autorité gouvernementale chargée des mines"
+  - id: transports
+    nom: "Secteur des transports"
+    autorite_coordination: "Autorités gouvernementales chargées des transports"
+  - id: eau
+    nom: "Secteur de la production et de la distribution d'eau"
+    autorite_coordination: "Autorités gouvernementales chargées de l'eau"
+  - id: bancaire
+    nom: "Secteur bancaire"
+    autorite_coordination: "Bank Al-Maghrib"
+  - id: telecommunications
+    nom: "Secteur des télécommunications"
+    autorite_coordination: "Agence Nationale de Réglementation des Télécommunications (ANRT)"
+  - id: assurances
+    nom: "Secteur des assurances et de la prévoyance sociale"
+    autorite_coordination: "Autorité de Contrôle des Assurances et de la Prévoyance Sociale (ACAPS)"
+
+# --- Articles 10-13 : échelle de classification des SI ---
+niveaux_classification:
+  - classe: "A"
+    description: "Au minimum un incident (C/D/I) a un impact très grave"
+    sensible: true
+  - classe: "B"
+    description: "Tous les incidents ont au maximum un impact grave"
+    sensible: true
+  - classe: "C"
+    description: "Tous les incidents ont au maximum un impact modéré"
+    sensible: false
+  - classe: "D"
+    description: "Tous les incidents ont un impact limité"
+    sensible: false
+
+# --- Annexe 2 du décret : domaines d'audit officiels ---
+types_audits:
+  - id: audit_organisationnel_physique
+    nom: "Audit organisationnel et physique"
+    description: "Conformité des politiques et procédures de sécurité aux directives de l'autorité nationale"
+  - id: audit_architecture
+    nom: "Audit d'architecture"
+    description: "Conformité du choix, positionnement et mise en œuvre des dispositifs matériels et logiciels"
+  - id: audit_configuration
+    nom: "Audit de configuration"
+    description: "Conformité des pratiques de configuration des dispositifs matériels et logiciels"
+  - id: audit_code_source
+    nom: "Audit de code source"
+    description: "Analyse du code source ou des conditions de compilation d'une solution logicielle"
+  - id: pentest
+    nom: "Test d'intrusion"
+    description: "Simulation de conditions réelles d'attaque pour découvrir des vulnérabilités exploitables"
+  - id: audit_systemes_industriels
+    nom: "Audit des systèmes industriels"
+    description: "Évaluation du niveau de sécurité d'un système industriel et de ses dispositifs de contrôle"
+  # Hors Annexe 2 mais mentionné explicitement dans le décret (art. 12) :
+  - id: dossier_homologation
+    nom: "Dossier d'homologation / déclaration SI sensible"
+    description: "Déclaration à l'autorité nationale des SI classés A ou B (sensibles)"
+
+# --- Couche 3+4 : obligations légales avec périodicité, article source ---
+obligations:
+  - code: OBLIG-CLASSIF-INITIALE
+    description: "Classifier ses systèmes d'information et déclarer les SI sensibles (classe A/B) à l'autorité nationale"
+    texte_reference: decret_2_21_406
+    article: "10, 12"
+    type_audit_requis: null
+    periodicite_mois: null
+    delai_initial_mois: 12   # art. 43 : délai à compter de la publication du décret
+    remarque: "Obligation ponctuelle initiale, délai désormais dépassé pour toute IIV existante"
+
+  - code: OBLIG-REVU-CLASSIF
+    description: "Réviser la classification des actifs informationnels / systèmes d'information"
+    texte_reference: decret_2_21_406
+    article: "15"
+    type_audit_requis: null
+    periodicite_mois: 36
+
+  - code: OBLIG-AUDIT-DOMAINE
+    description: "Auditer chaque domaine de sécurité applicable (Annexe 2) pour les SI sensibles"
+    texte_reference: decret_2_21_406
+    article: "28"
+    type_audit_requis: "un des types_audits ci-dessus, selon le domaine concerné"
+    periodicite_mois: 36
+
+  - code: OBLIG-CONSERVATION-RAPPORT
+    description: "Conserver le rapport d'audit et les documents afférents"
+    texte_reference: decret_2_21_406
+    article: "33"
+    type_audit_requis: null
+    duree_conservation_mois: 36
+
+  - code: OBLIG-DESIGNATION-RSSI
+    description: "Désigner un responsable de la sécurité des systèmes d'information et informer l'autorité nationale"
+    texte_reference: decret_2_21_406
+    article: "17"
+    type_audit_requis: null
+    periodicite_mois: null
+    remarque: "Obligation permanente, pas de périodicité de renouvellement"
+
+  - code: OBLIG-AUDIT-DNSSI
+    description: "Se conformer aux règles organisationnelles et techniques de la DNSSI"
+    texte_reference: dnssi_v2
+    article: null
+    type_audit_requis: "audit de conformité DNSSI (voir dnssi_v2.yaml, 14 chapitres)"
+    periodicite_mois: null
+    remarque: "Pas de périodicité légale explicite trouvée dans le décret pour ce type précis ; à confirmer avec l'encadrant (c'est votre question en attente sur le seuil/pondération)"

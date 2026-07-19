@@ -2,35 +2,68 @@
 # rapports d'audit de conformité DNSSI, indépendamment du prestataire.
 # Source : rapport PASSI de référence, pages 5-6, vérifié ligne par ligne.
 
+# Bloc à insérer dans dnssi_v2.yaml : ajoute "codes_clauses" à chaque chapitre.
+# Source : rapport PASSI de référence, §3.1 à §3.14, ligne "Clauses : DNSSI (...)"
+# pour chacun des 14 chapitres — recopié tel quel, pas déduit.
 chapitres:
   - numero: 1
     nom: "Politique de sécurité des systèmes d'information"
+    codes_clauses: ["POL-RISQUE", "POL-FORMEL", "POL-PAS", "POL-TDB"]
   - numero: 2
     nom: "Organisation de la sécurité des systèmes d'information"
+    codes_clauses: ["ORG-INTER-GOUV", "ORG-INTER-RSSI", "ORG-INTER-RESP", "ORG-TELETRAV-SEC"]
   - numero: 3
     nom: "Sécurité des ressources humaines"
+    codes_clauses: ["RH-AVT-PERSON", "RH-AVT-COND", "RH-APRES-FORM", "RH-FINGEST"]
   - numero: 4
     nom: "Gestion des actifs informationnels"
+    codes_clauses: ["ACTIF-RESP-INV", "ACTIF-RESP-PROP", "ACTIF-RESP-CHARTE", "ACTIF-RESP-CARTO",
+                     "ACTIF-CLASSIF-INFO", "ACTIF-CLASSIF-MES", "ACTIF-CLASSIF-EXAM",
+                     "ACTIF-SUP-AMOV", "ACTIF-SUP-MOBIL", "ACTIF-SUP-NOMAD", "ACTIF-SUP-REB"]
   - numero: 5
     nom: "Contrôle d'accès"
+    codes_clauses: ["ACC-EXIG-POL", "ACC-UTILIS-ENREGIS/DESINSCRI", "ACC-UTILIS-IDF/AUTH",
+                     "ACC-UTILIS-HABILIT", "ACC-UTILIS-GENERIQ", "ACC-UTILIS-REVUE",
+                     "ACC-SYS/APP-ACC", "ACC-SYS/APP-PRIVIL", "ACC-SYS/APP-MDP"]
   - numero: 6
     nom: "Cryptographie"
+    codes_clauses: ["CRYPTO-MES-POL", "CRYPTO-MES-GESTCLE"]
   - numero: 7
     nom: "Sécurité physique et environnementale"
+    codes_clauses: ["PHYS-ZONE-DELIMIT", "PHYS-ZONE-PROC", "PHYS-ZONE-DISPO", "PHYS-ZONE-VIDEOPROT",
+                     "PHYS-ZONE-INCEN", "PHYS-ZONE-EAU", "PHYS-MAT-CABL", "PHYS-MAT-OND",
+                     "PHYS-MAT-ELECTROG", "PHYS-MAT-CLIM", "PHYS-MAT-EQUIP", "PHYS-MAT-HORSLOC"]
   - numero: 8
     nom: "Sécurité liée à l'exploitation"
+    codes_clauses: ["EXP-PROC-CHANG", "EXP-PROC-CAP", "EXP-PROC-ENVIR", "EXP-PROTEC-MALVEIL",
+                     "EXP-SAUV-PROC", "EXP-SAUV-RESTAUR", "EXP-SAUV-SEC",
+                     "EXP-JOURN/SURV-JOURNAL", "EXP-JOURN/SURV-PRIVIL", "EXP-JOURN/SURV-MAINT",
+                     "EXP-JOURN/SURV-SYNCHRON", "EXP-JOURN/SURV-DIST", "EXP-JOURN/SURV-CENTR",
+                     "EXP-SYS-CONFIG", "EXP-SYS-DURC", "EXP-VULN-INSTALL", "EXP-VULN-GEST",
+                     "EXP-VULN-CORRECT", "EXP-AUDIT-MES"]
   - numero: 9
     nom: "Sécurité des communications"
+    codes_clauses: ["COM-MANAG-CLOISON", "COM-MANAG-FILTRAGE", "COM-MANAG-SYSAUT",
+                     "COM-MANAG-DISTANT", "COM-MANAG-TUNEL", "COM-MANAG-RSF",
+                     "COM-TRANS-FICHIER", "COM-TRANS-MESS", "COM-TRANS-FILTR"]
   - numero: 10
     nom: "Acquisition, développement et maintenance des systèmes d'information"
+    codes_clauses: ["DEV-EXIG-PROJET", "DEV-EXIG-TRANSAC", "DEV-PROC-POL", "DEV-PROC-CHANG",
+                     "DEV-PROC-ENVIR", "DEV-PROC-TEST", "DEV-PROC-CODE", "DEV-PROC-DONNEE"]
   - numero: 11
     nom: "Relations avec les fournisseurs"
+    codes_clauses: ["FOURNIS-REL-RISQ", "FOURNIS-REL-POL", "FOURNIS-REL-EXIG", "FOURNIS-GEST-SURVEIL"]
   - numero: 12
     nom: "Gestion des incidents de cybersécurité"
+    codes_clauses: ["INCID-GEST-PROC", "INCID-GEST-CAT", "INCID-GEST-SIGNAL", "INCID-GEST-QUALIF",
+                     "INCID-GEST-REPONSE", "INCID-GEST-ALERT", "INCID-GEST-REP", "INCID-GEST-PREUV"]
   - numero: 13
     nom: "Gestion de la continuité de l'activité"
+    codes_clauses: ["CONTINU-BIA", "CONTINU-ACT", "CONTINU-PLAN", "CONTINU-EXERCICE"]
   - numero: 14
     nom: "Conformité"
+    codes_clauses: ["CONF-OBLIG-IDF", "CONF-OBLIG-CYBERSEC", "CONF-OBLIG-INTELLECT",
+                     "CONF-OBLIG-PERSO", "CONF-OBLIG-CRYPTO", "CONF-REVU-SSI"]
 
 echelle_conformite:
   - valeur: "N/A"

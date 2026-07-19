@@ -11,6 +11,7 @@ from datetime import date, datetime
 from pydantic import BaseModel
 
 from dgssi_platform.domain.entities.iiv import IIV
+from dgssi_platform.domain.entities.non_conformite import NonConformite
 
 
 class VersionDocument(BaseModel):
@@ -84,4 +85,5 @@ class Audit(BaseModel):
     # page 10-11 : {"significatif": 11, "non_significatif": 7, "remarque": 1}
 
     chapitres: list[ChapitreAudit] = []               # pages 12-34
+    non_conformites: list[NonConformite] = []          # extraction LLM (constats en texte libre)
     audit_technique: AuditTechnique | None = None      # pages 35-40
