@@ -104,4 +104,13 @@ class ExtracteurHybride(Extracteur):
             audit_technique=audit_technique,
             chapitres=chapitres,
             non_conformites=non_conformites,
+            confiance_extraction={
+                "classif": conf_classif,
+                "historique": conf_historique,
+                "taux": conf_taux,
+                "resultats": conf_resultats,
+                "prestataire": conf_prestataire,
+                "clauses": conf_clauses,
+                "llm": conf_llm,
+            },
         )

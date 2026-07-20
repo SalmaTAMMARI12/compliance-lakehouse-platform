@@ -1,13 +1,17 @@
-"""Extraction des non-conformités depuis le texte libre des constats, via
-LLM local pour description/recommandation, et classification par règles
-Python pour le type (voir classification_ecarts.py).
+"""Extraction enrichie des non-conformités depuis le texte libre des
+constats, via LLM local. Le LLM ne fait QUE de l'enrichissement
+documentaire (résumé, recommandation, actifs, échéance) — jamais de
+classification ni de décision de conformité (voir non_conformite.py).
 
 Isolation stricte : un échec LLM sur un chapitre ne bloque jamais les
 autres chapitres ni le reste du pipeline (retour vide + confiance basse,
-jamais d'exception qui remonte).
+jamais d'exception qui remonte) — le LLM est un enrichissement optionnel,
+pas une dépendance bloquante du pipeline.
 """
 
 from __future__ import annotations
+
+import re
 
 from dgssi_platform.domain.entities.non_conformite import NonConformite
 from dgssi_platform.infrastructure.extraction.llm.client_llm import generer_json_chat
@@ -15,7 +19,7 @@ from dgssi_platform.infrastructure.extraction.llm.prompts.prompt_constats import
     SYSTEM_PROMPT_CONSTATS,
     construire_user_prompt,
 )
-from dgssi_platform.infrastructure.extraction.regex.classification_ecarts import classifier_type_ecart
+from dgssi_platform.infrastructure.extraction.regex.coherence_chapitre import est_coherent_avec_chapitre
 from dgssi_platform.infrastructure.extraction.regex.decoupage_chapitres import trouver_ancres_chapitres
 from dgssi_platform.shared.logging import get_logger
 
@@ -31,7 +35,6 @@ def _decouper_blocs_par_chapitre(texte: str, noms_chapitres: list[str]) -> dict[
             "%d ancres trouvées pour %d chapitres attendus — découpage potentiellement décalé",
             len(positions), len(noms_chapitres),
         )
-
     blocs: dict[str, str] = {}
     for i, nom_chapitre in enumerate(noms_chapitres):
         if i >= len(positions):
@@ -42,22 +45,35 @@ def _decouper_blocs_par_chapitre(texte: str, noms_chapitres: list[str]) -> dict[
     return blocs
 
 
+def _nettoyer_echappements_markdown(texte: str) -> str:
+    """Retire les echappements Markdown ajoutes par Docling devant
+    certains caracteres dans les noms de fichiers cites en texte.
+    Necessaire car le LLM recopie ces echappements tels quels en
+    citant le texte source, ce qui produit une sequence non valide
+    en JSON et fait crasher le parsing (bug identifie sur le
+    chapitre Conformite)."""
+    backslash = chr(92)
+    caracteres_a_nettoyer = "_*[]()#+.-"
+    for caractere in caracteres_a_nettoyer:
+        texte = texte.replace(backslash + caractere, caractere)
+    return texte
+
+
 def _extraire_lignes_constats(bloc: str) -> list[str]:
-    """Isole les lignes de constats (commençant par '-') après le mot
-    'Constats' dans un bloc de chapitre."""
     idx = bloc.find("Constats")
     if idx == -1:
         return []
     section = bloc[idx + len("Constats"):].strip(" :\n")[:1500]
-    return [l.strip() for l in section.split("\n") if l.strip().startswith("-")]
+    lignes = [l.strip() for l in section.split("\n") if l.strip().startswith("-")]
+    return [_nettoyer_echappements_markdown(l) for l in lignes]
 
 
 def _valider_item_llm(item: dict) -> tuple[bool, str]:
     if not isinstance(item, dict):
         return False, "n'est pas un objet"
-    description = item.get("description", "")
-    if not isinstance(description, str) or len(description.strip()) < 5:
-        return False, "description vide ou trop courte"
+    resume = item.get("resume_constat", "")
+    if not isinstance(resume, str) or len(resume.strip()) < 5:
+        return False, "resume_constat vide ou trop court"
     recommandation = item.get("recommandation")
     if recommandation is not None and str(recommandation).strip().upper() in VALEURS_RECOMMANDATION_INVALIDES:
         return False, f"recommandation invalide: {recommandation!r}"
@@ -67,28 +83,27 @@ def _valider_item_llm(item: dict) -> tuple[bool, str]:
 def extraire_non_conformites(
     texte: str, chapitres_avec_codes: dict[str, list[str]]
 ) -> tuple[list[NonConformite], float]:
-    """Pour chaque chapitre, extrait les non-conformités : description et
-    recommandation via LLM, type via classification Python. Retourne la
-    liste complète + une confiance moyenne sur l'ensemble.
+    """Pour chaque chapitre, enrichit les constats via LLM. Ne produit
+    jamais de classification/décision — voir contrat NonConformite.
     """
     noms_chapitres = list(chapitres_avec_codes.keys())
     blocs = _decouper_blocs_par_chapitre(texte, noms_chapitres)
 
     toutes_non_conformites: list[NonConformite] = []
     scores: list[float] = []
+    nb_a_verifier = 0
 
     for nom_chapitre, codes in chapitres_avec_codes.items():
         bloc = blocs.get(nom_chapitre, "")
         lignes_constats = _extraire_lignes_constats(bloc)
 
         if not lignes_constats or "aucun écart" in bloc.lower():
-            scores.append(1.0)  # rien à extraire, cas normal et fiable
+            scores.append(1.0)
             continue
 
         texte_constats = "\n".join(lignes_constats)
         user_prompt = construire_user_prompt(
             nom_chapitre=nom_chapitre,
-            codes_dnssi=", ".join(codes),
             texte_constats=texte_constats,
             nb_constats=len(lignes_constats),
         )
@@ -108,14 +123,29 @@ def extraire_non_conformites(
                 continue
 
             texte_source = lignes_constats[i] if i < len(lignes_constats) else ""
+            resume = item["resume_constat"]
+            coherent = est_coherent_avec_chapitre(resume, codes)
+            if not coherent:
+                nb_a_verifier += 1
+
             toutes_non_conformites.append(
                 NonConformite(
                     chapitre=nom_chapitre,
-                    type=classifier_type_ecart(texte_source),
-                    description=item["description"],
+                    texte_source=texte_source,
+                    resume_constat=resume,
                     recommandation=item.get("recommandation"),
+                    actifs_concernes=item.get("actifs_concernes") or [],
+                    echeance=item.get("echeance"),
+                    confiance=confiance,
+                    methode_extraction="llm",
+                    a_verifier=not coherent,
                 )
             )
 
     confiance_moyenne = sum(scores) / len(scores) if scores else 0.0
+    if nb_a_verifier:
+        logger.warning(
+            "%d/%d non-conformités marquées a_verifier (incohérence chapitre détectée)",
+            nb_a_verifier, len(toutes_non_conformites),
+        )
     return toutes_non_conformites, confiance_moyenne

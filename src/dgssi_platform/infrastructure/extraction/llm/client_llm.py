@@ -10,6 +10,7 @@ recopiés, structures invalides) alors que l'API chat les élimine.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,7 @@ def _get_llm():
 
 
 def generer_json_chat(
-    system_prompt: str, user_prompt: str, max_tokens: int = 600
+    system_prompt: str, user_prompt: str, max_tokens: int = 900
 ) -> tuple[dict[str, Any] | None, float]:
     """Appelle le LLM via l'API chat (system + user), avec une grammaire
     JSON générique. Ne lève jamais d'exception vers l'appelant — retourne
@@ -67,6 +68,10 @@ def generer_json_chat(
         )
         texte_brut = reponse["choices"][0]["message"]["content"]
         logger.debug("Texte brut LLM: %s", texte_brut[:2000])
+        # Filet de sécurité : répare les échappements invalides que le modèle
+        # peut produire en recopiant un texte source (ex. \_ issu d'un nom
+        # de fichier Markdown-échappé) — un \ non suivi d'un caractère
+        # d'échappement JSON valide est doublé pour rester un JSON valide.
         resultat = json.loads(texte_brut)
         return resultat, 0.7
     except Exception as e:

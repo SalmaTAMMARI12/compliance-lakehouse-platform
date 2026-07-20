@@ -1,13 +1,18 @@
 """Entité NonConformite — résultat structuré d'un constat en texte libre,
-produit par extraction LLM (infrastructure/extraction/llm/). Distincte des
-clauses DNSSI (codes techniques) : ici on capture le VERDICT rédigé en
-prose par l'auditeur, reformulé de façon structurée.
+produit par extraction LLM (infrastructure/extraction/llm/).
 
-Le champ a_verifier signale une incohérence détectée entre le chapitre
-attendu et le contenu extrait — cas connu où Docling associe mal le texte
-au bon chapitre sur les tableaux multi-pages de ce type de rapport. Un
-résultat marqué a_verifier=True reste utilisable mais doit être relu par
-un humain avant d'être considéré fiable en base.
+Le champ 'type' (significatif/non_significatif/remarque) a été retiré
+volontairement : cette information n'est pas présente au niveau de chaque
+constat individuel dans le rapport source (seuls des totaux agrégés le
+sont — voir section 2.3 du rapport de référence). L'extraire reviendrait
+à l'inventer, que ce soit via Regex ou LLM. Si les "fiches d'écarts"
+séparées mentionnées dans le rapport deviennent disponibles un jour, ce
+champ pourra être réintroduit via un extracteur Regex dédié.
+
+texte_source et methode_extraction assurent la traçabilité exigée par la
+gouvernance de données : on doit toujours pouvoir remonter à la phrase
+d'origine et savoir si une donnée vient d'une règle déterministe ou d'un
+enrichissement LLM.
 """
 from __future__ import annotations
 
@@ -16,7 +21,11 @@ from pydantic import BaseModel
 
 class NonConformite(BaseModel):
     chapitre: str
-    type: str  # "significatif" | "non_significatif" | "remarque"
-    description: str
+    texte_source: str
+    resume_constat: str
     recommandation: str | None = None
+    actifs_concernes: list[str] = []
+    echeance: str | None = None
+    confiance: float = 0.0
+    methode_extraction: str = "llm"
     a_verifier: bool = False

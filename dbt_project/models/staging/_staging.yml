@@ -1,0 +1,76 @@
+version: 2
+
+sources:
+  - name: dgssi
+    schema: public
+    tables:
+      - name: audits
+      - name: chapitres
+      - name: non_conformites
+      - name: evaluations_conformite
+      - name: historique_versions
+      - name: resultats_techniques
+
+models:
+  - name: stg_audits
+    columns:
+      - name: audit_id
+        tests: [unique, not_null]
+
+  - name: stg_chapitres
+    columns:
+      - name: chapitre_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_audits')
+              field: audit_id
+
+  - name: stg_non_conformites
+    columns:
+      - name: non_conformite_id
+        tests: [unique, not_null]
+      - name: chapitre_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_chapitres')
+              field: chapitre_id
+  - name: stg_evaluations_conformite
+    columns:
+      - name: evaluation_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_audits')
+                field: audit_id
+
+  - name: stg_historique_versions
+    columns:
+      - name: historique_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_audits')
+                field: audit_id
+
+  - name: stg_resultats_techniques
+    columns:
+      - name: resultat_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_audits')
+                field: audit_id
+                

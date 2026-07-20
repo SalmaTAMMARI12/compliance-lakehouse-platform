@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: dim_iiv
+    columns:
+      - name: iiv_key
+        tests: [unique, not_null]
+
+  - name: dim_audit
+    columns:
+      - name: audit_id
+        tests: [unique, not_null]
+      - name: iiv_key
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_iiv')
+                field: iiv_key
+      - name: taux_conformite_global
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+
+  - name: dim_chapitre
+    columns:
+      - name: chapitre_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_audit')
+                field: audit_id
+
+  - name: fact_non_conformite
+    columns:
+      - name: non_conformite_id
+        tests: [unique, not_null]
+      - name: chapitre_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_chapitre')
+                field: chapitre_id
+
+  - name: fact_conformite
+    columns:
+      - name: evaluation_id
+        tests: [unique, not_null]
+      - name: audit_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_audit')
+                field: audit_id

@@ -87,3 +87,13 @@ class Audit(BaseModel):
     chapitres: list[ChapitreAudit] = []               # pages 12-34
     non_conformites: list[NonConformite] = []          # extraction LLM (constats en texte libre)
     audit_technique: AuditTechnique | None = None      # pages 35-40
+
+    confiance_extraction: dict[str, float] = {}
+    # Confiance par catégorie de champ, ex. {"classif": 1.0, "historique": 0.9,
+    # "taux": 1.0, "resultats": 1.0, "prestataire": 0.9, "clauses": 1.0, "llm": 0.7}
+    # Persiste ce qui aujourd'hui n'existe que dans les logs — traçabilité de
+    # fiabilité par champ, exigée par la gouvernance des données de la fiche de
+    # stage. Pas de "methode_extraction" par champ ici : tous les champs de
+    # Audit sont en Regex sauf non_conformites (déjà tracé sur NonConformite
+    # elle-même) — un champ répété partout avec la même valeur "regex" ne
+    # serait pas une vraie information.
