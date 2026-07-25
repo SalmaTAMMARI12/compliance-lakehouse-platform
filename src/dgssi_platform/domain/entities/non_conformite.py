@@ -29,3 +29,4 @@ class NonConformite(BaseModel):
     confiance: float = 0.0
     methode_extraction: str = "llm"
     a_verifier: bool = False
+    est_note: bool = False

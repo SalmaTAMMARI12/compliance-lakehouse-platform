@@ -21,3 +21,15 @@ models:
     marts:
       +materialized: table
       +schema: marts
+      dim_chapitre:
+        +enabled: false
+
+seeds:
+  dgssi_warehouse:
+    chapitres_dnssi_ref:
+      +schema: marts
+      +column_types:
+        chapitre_dnssi_id: integer
+        code_chapitre: varchar(10)
+        nom_chapitre: varchar(200)
+        domaine: varchar(100)

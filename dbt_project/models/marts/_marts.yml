@@ -1,22 +1,50 @@
-version: 2
+﻿version: 2
 
 models:
+
+  # -------------------------------------------------
+  # DIMENSIONS
+  # -------------------------------------------------
+
   - name: dim_iiv
+    description: >
+      Dimension des Infrastructures d'Importance Vitale (IIV).
+      Chaque ligne represente une IIV unique identifiee par son nom et son secteur.
     columns:
       - name: iiv_key
-        tests: [unique, not_null]
+        description: Cle surrogate unique de l'IIV (entier auto-genere).
+        tests:
+          - unique
+          - not_null
+      - name: iiv_nom
+        description: Nom de l'infrastructure vitale.
+        tests:
+          - not_null
+      - name: iiv_secteur
+        description: Secteur d'activite de l'IIV (energie, eau, telecoms, etc.).
+        tests:
+          - not_null
 
   - name: dim_audit
+    description: >
+      Dimension des audits de conformite.
+      Contient les metadonnees de chaque audit.
     columns:
       - name: audit_id
-        tests: [unique, not_null]
-      - name: iiv_key
+        description: Identifiant unique de l'audit (cle primaire).
         tests:
+          - unique
+          - not_null
+      - name: iiv_key
+        description: Cle etrangere vers dim_iiv.
+        tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('dim_iiv')
                 field: iiv_key
       - name: taux_conformite_global
+        description: Taux de conformite global de l'IIV (entre 0 et 100).
         tests:
           - dbt_utils.accepted_range:
               arguments:
@@ -24,35 +52,194 @@ models:
                 max_value: 100
                 inclusive: true
 
-  - name: dim_chapitre
+  - name: dim_chapitre_dnssi
+    description: >
+      Dimension FIXE des 14 chapitres du referentiel reglementaire DNSSI v2.
+      Contient exactement 14 lignes. Source: seed chapitres_dnssi_ref.csv.
     columns:
-      - name: chapitre_id
-        tests: [unique, not_null]
-      - name: audit_id
+      - name: chapitre_dnssi_id
+        description: Identifiant reglementaire du chapitre (1 a 14).
         tests:
-          - relationships:
-              arguments:
-                to: ref('dim_audit')
-                field: audit_id
+          - unique
+          - not_null
+      - name: code_chapitre
+        description: Code court du chapitre (CH01 a CH14).
+        tests:
+          - unique
+          - not_null
+      - name: nom_chapitre
+        description: Nom officiel du chapitre DNSSI v2.
+        tests:
+          - not_null
+      - name: domaine
+        description: Domaine regroupant le chapitre.
+        tests:
+          - not_null
 
-  - name: fact_non_conformite
-    columns:
-      - name: non_conformite_id
-        tests: [unique, not_null]
-      - name: chapitre_id
-        tests:
-          - relationships:
-              arguments:
-                to: ref('dim_chapitre')
-                field: chapitre_id
+  # -------------------------------------------------
+  # TABLES DE FAITS
+  # -------------------------------------------------
 
   - name: fact_conformite
+    description: >
+      Table de faits principale de conformite.
+      Une ligne = une evaluation de conformite pour un audit.
     columns:
       - name: evaluation_id
-        tests: [unique, not_null]
-      - name: audit_id
+        description: Identifiant unique de l'evaluation (cle primaire).
         tests:
+          - unique
+          - not_null
+      - name: audit_id
+        description: Cle etrangere vers dim_audit.
+        tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('dim_audit')
                 field: audit_id
+      - name: statut
+        description: Statut de conformite (Conforme, Non conforme, Partiellement conforme).
+        tests:
+          - accepted_values:
+              values: ['Conforme', 'Non conforme', 'Partiellement conforme']
+      - name: taux_conformite_global
+        description: Taux de conformite global (entre 0 et 100).
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+      - name: nb_ecarts_critiques
+        description: Nombre d'ecarts critiques identifies.
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 9999
+                inclusive: true
+
+  - name: fact_non_conformite
+    description: >
+      Table de faits des non-conformites detectees.
+      Une ligne = une non-conformite identifiee dans un chapitre d'un audit.
+    columns:
+      - name: non_conformite_id
+        description: Identifiant unique de la non-conformite (cle primaire).
+        tests:
+          - unique
+          - not_null
+      - name: chapitre_id
+        description: Cle etrangere vers fact_chapitre_audit.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fact_chapitre_audit')
+                field: chapitre_audit_id
+      - name: audit_id
+        description: Cle etrangere denormalisee vers dim_audit.
+        tests:
+          - not_null
+      - name: confiance
+        description: Score de confiance de l'extraction (0 a 1).
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+                inclusive: true
+
+  - name: fact_chapitre_audit
+    description: >
+      Table de faits des chapitres evalues par audit.
+      Une ligne = un chapitre DNSSI evalue dans un audit donne.
+    columns:
+      - name: chapitre_audit_id
+        description: Identifiant unique (cle primaire).
+        tests:
+          - unique
+          - not_null
+      - name: audit_id
+        description: Cle etrangere vers dim_audit.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_audit')
+                field: audit_id
+      - name: chapitre_dnssi_id
+        description: Cle etrangere vers dim_chapitre_dnssi. NULL si chapitre non reconnu.
+      - name: nom_chapitre
+        description: Nom du chapitre tel qu'il apparait dans le rapport d'audit.
+        tests:
+          - not_null
+
+  - name: fact_resultats_techniques
+    description: >
+      Table de faits des resultats techniques par equipement audite.
+      Une ligne = un element technique audite dans un audit.
+    columns:
+      - name: resultat_id
+        description: Identifiant unique (cle primaire).
+        tests:
+          - unique
+          - not_null
+      - name: audit_id
+        description: Cle etrangere vers dim_audit.
+        tests:
+          - not_null
+      - name: element_audite
+        description: Nom ou identifiant de l'equipement audite.
+        tests:
+          - not_null
+      - name: critique
+        description: Nombre de vulnerabilites critiques.
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 9999
+                inclusive: true
+      - name: elevee
+        description: Nombre de vulnerabilites de niveau eleve.
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 9999
+                inclusive: true
+      - name: moyenne
+        description: Nombre de vulnerabilites de niveau moyen.
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 9999
+                inclusive: true
+      - name: faible
+        description: Nombre de vulnerabilites de niveau faible.
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 9999
+                inclusive: true
+      - name: score_exposition_total
+        description: Somme totale des vulnerabilites (tous niveaux).
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 99999
+                inclusive: true
+      - name: score_exposition_pondere
+        description: Score pondere (critique x4 + elevee x3 + moyenne x2 + faible x1).
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 999999
+                inclusive: true
+

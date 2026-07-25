@@ -1,19 +1,12 @@
-"""Wrapper autour de llama-cpp-python. Isolé dans ce fichier pour que le
-reste du projet ne dépende jamais directement de llama_cpp.
-
-Utilise create_chat_completion (pas l'appel de complétion brute) car
-Qwen2.5-Instruct a été entraîné spécifiquement sur ce format ; l'appeler
-en complétion brute produisait des sorties incohérentes (placeholders
-recopiés, structures invalides) alors que l'API chat les élimine.
+"""Wrapper autour de llama-cpp-python (fichier .gguf local).
+Remplace la version Ollama pour économiser la RAM (Ollama garde le modèle
+en mémoire en permanence, llama-cpp-python le charge uniquement à la demande).
+Contrat public identique — extracteur_constats.py inchangé.
 """
-
 from __future__ import annotations
-
 import json
-import re
 from pathlib import Path
 from typing import Any
-
 from dgssi_platform.shared.logging import get_logger
 
 logger = get_logger(__name__)
@@ -33,29 +26,30 @@ number ::= "-"? [0-9]+ ("." [0-9]+)?
 ws     ::= [ \t\n\r]*
 '''
 
-
 def _get_llm():
     global _llm_instance
     if _llm_instance is None:
         from llama_cpp import Llama
-        logger.info("Chargement du modèle LLM local : %s", _MODEL_PATH)
-        _llm_instance = Llama(model_path=str(_MODEL_PATH), n_ctx=4096, verbose=False)
+        logger.info("Chargement du modèle LLM : %s", _MODEL_PATH)
+        _llm_instance = Llama(
+            model_path=str(_MODEL_PATH),
+            n_ctx=4096,
+            verbose=False
+        )
     return _llm_instance
 
 
 def generer_json_chat(
     system_prompt: str, user_prompt: str, max_tokens: int = 900
 ) -> tuple[dict[str, Any] | None, float]:
-    """Appelle le LLM via l'API chat (system + user), avec une grammaire
-    JSON générique. Ne lève jamais d'exception vers l'appelant — retourne
-    (None, 0.0) en cas d'échec, même contrat que les extracteurs regex.
+    """Appelle le LLM via create_chat_completion avec grammaire JSON forcée.
+    Même contrat exact que la version Ollama — ne lève jamais d'exception,
+    retourne (None, 0.0) en cas d'échec.
     """
     try:
         from llama_cpp import LlamaGrammar
-
         llm = _get_llm()
         grammar = LlamaGrammar.from_string(_JSON_GRAMMAR)
-
         reponse = llm.create_chat_completion(
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -67,11 +61,7 @@ def generer_json_chat(
             grammar=grammar,
         )
         texte_brut = reponse["choices"][0]["message"]["content"]
-        logger.debug("Texte brut LLM: %s", texte_brut[:2000])
-        # Filet de sécurité : répare les échappements invalides que le modèle
-        # peut produire en recopiant un texte source (ex. \_ issu d'un nom
-        # de fichier Markdown-échappé) — un \ non suivi d'un caractère
-        # d'échappement JSON valide est doublé pour rester un JSON valide.
+        logger.debug("Texte brut LLM : %s", texte_brut[:2000])
         resultat = json.loads(texte_brut)
         return resultat, 0.7
     except Exception as e:

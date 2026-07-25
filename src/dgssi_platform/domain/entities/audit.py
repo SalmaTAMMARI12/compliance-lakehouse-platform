@@ -33,7 +33,8 @@ class ChapitreAudit(BaseModel):
 
     objectifs: str
     points_de_controle: list[str] = []
-    notes_audit: str
+    # notes_audit: str
+    notes_audit_synthese: str | None = None
     preuves: list[str] = []
     constats: list[str] = []
     # Texte libre — parfois une seule phrase "Conforme aux exigences. Aucun

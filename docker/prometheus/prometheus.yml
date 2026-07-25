@@ -1,0 +1,21 @@
+global:
+  scrape_interval:     15s   # Fréquence de collecte des métriques
+  evaluation_interval: 15s   # Fréquence d'évaluation des règles d'alerte
+
+scrape_configs:
+
+  # Prometheus se scrape lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Métriques PostgreSQL via postgres-exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    metrics_path: /metrics
+
+  # Métriques système de l'hôte (si node-exporter est ajouté plus tard)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']

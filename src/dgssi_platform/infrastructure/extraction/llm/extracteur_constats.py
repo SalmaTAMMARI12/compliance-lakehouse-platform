@@ -1,12 +1,11 @@
-"""Extraction enrichie des non-conformités depuis le texte libre des
-constats, via LLM local. Le LLM ne fait QUE de l'enrichissement
-documentaire (résumé, recommandation, actifs, échéance) — jamais de
-classification ni de décision de conformité (voir non_conformite.py).
+"""Extraction des non-conformités depuis le texte libre des constats, via
+LLM local pour description/recommandation, classification par règles
+Python pour le type, et vérification de cohérence thématique pour
+signaler les cas où Docling a mal associé le texte au bon chapitre.
 
 Isolation stricte : un échec LLM sur un chapitre ne bloque jamais les
 autres chapitres ni le reste du pipeline (retour vide + confiance basse,
-jamais d'exception qui remonte) — le LLM est un enrichissement optionnel,
-pas une dépendance bloquante du pipeline.
+jamais d'exception qui remonte).
 """
 
 from __future__ import annotations
@@ -19,8 +18,10 @@ from dgssi_platform.infrastructure.extraction.llm.prompts.prompt_constats import
     SYSTEM_PROMPT_CONSTATS,
     construire_user_prompt,
 )
+from dgssi_platform.infrastructure.extraction.regex.classification_ecarts import classifier_type_ecart
 from dgssi_platform.infrastructure.extraction.regex.coherence_chapitre import est_coherent_avec_chapitre
 from dgssi_platform.infrastructure.extraction.regex.decoupage_chapitres import trouver_ancres_chapitres
+from dgssi_platform.infrastructure.extraction.regex.filtre_faux_constats import est_probable_faux_constat
 from dgssi_platform.shared.logging import get_logger
 
 logger = get_logger(__name__)
@@ -45,34 +46,65 @@ def _decouper_blocs_par_chapitre(texte: str, noms_chapitres: list[str]) -> dict[
     return blocs
 
 
-def _nettoyer_echappements_markdown(texte: str) -> str:
-    """Retire les echappements Markdown ajoutes par Docling devant
-    certains caracteres dans les noms de fichiers cites en texte.
-    Necessaire car le LLM recopie ces echappements tels quels en
-    citant le texte source, ce qui produit une sequence non valide
-    en JSON et fait crasher le parsing (bug identifie sur le
-    chapitre Conformite)."""
-    backslash = chr(92)
-    caracteres_a_nettoyer = "_*[]()#+.-"
-    for caractere in caracteres_a_nettoyer:
-        texte = texte.replace(backslash + caractere, caractere)
-    return texte
-
-
 def _extraire_lignes_constats(bloc: str) -> list[str]:
+    lignes = bloc.split("\n")
+    constats_inverses = []
+
+    for i in range(len(lignes) - 1, -1, -1):
+        ligne = lignes[i].strip()
+
+        if ligne.startswith("- -"):
+            constats_inverses.append(ligne)
+            for j in range(i - 1, -1, -1):
+                ligne_prec = lignes[j].strip()
+                if not ligne_prec:
+                    continue
+                if ligne_prec.startswith("- -"):
+                    constats_inverses.append(ligne_prec)
+                elif ligne_prec.startswith("- "):
+                    break
+                else:
+                    break
+            break
+
+    constats = list(reversed(constats_inverses))
+
+    if not constats:
+        idx = bloc.find("Constats")
+        if idx != -1:
+            section = bloc[idx + len("Constats"):].strip(" :\n")[:1500]
+            return [l.strip() for l in section.split("\n") if l.strip().startswith("-")]
+
+    return constats
+
+
+def _section_declaree_conforme(bloc: str) -> bool:
+    """Vérifie si la section Constats elle-même (pas tout le bloc chapitre)
+    COMMENCE par 'conforme' — plus sûr qu'une recherche de sous-chaîne sur
+    tout le bloc, qui pourrait matcher une phrase de clôture optimiste
+    apparaissant APRÈS un vrai écart déjà listé.
+
+    Tolère les artefacts d'extraction PDF où chaque puce commence par un
+    double tiret ("- -Conforme...") au lieu d'un tiret simple — sans ce
+    nettoyage, startswith("conforme") échoue à tort et laisse passer un
+    chapitre pourtant déclaré conforme comme une fausse non-conformité
+    (bug confirmé sur 3 chapitres du rapport de référence : Organisation,
+    RH, Sécurité physique — tous les trois avaient fuité dans
+    non_conformites avant ce correctif).
+    """
     idx = bloc.find("Constats")
     if idx == -1:
-        return []
-    section = bloc[idx + len("Constats"):].strip(" :\n")[:1500]
-    lignes = [l.strip() for l in section.split("\n") if l.strip().startswith("-")]
-    return [_nettoyer_echappements_markdown(l) for l in lignes]
+        return False
+    section = bloc[idx + len("Constats"):].strip(" :\n")[:200]
+    section_nettoyee = re.sub(r"^[\s\-–—]+", "", section)
+    return section_nettoyee.strip().lower().startswith("conforme")
 
 
 def _valider_item_llm(item: dict) -> tuple[bool, str]:
     if not isinstance(item, dict):
         return False, "n'est pas un objet"
-    resume = item.get("resume_constat", "")
-    if not isinstance(resume, str) or len(resume.strip()) < 5:
+    description = item.get("resume_constat", "")
+    if not isinstance(description, str) or len(description.strip()) < 5:
         return False, "resume_constat vide ou trop court"
     recommandation = item.get("recommandation")
     if recommandation is not None and str(recommandation).strip().upper() in VALEURS_RECOMMANDATION_INVALIDES:
@@ -83,8 +115,9 @@ def _valider_item_llm(item: dict) -> tuple[bool, str]:
 def extraire_non_conformites(
     texte: str, chapitres_avec_codes: dict[str, list[str]]
 ) -> tuple[list[NonConformite], float]:
-    """Pour chaque chapitre, enrichit les constats via LLM. Ne produit
-    jamais de classification/décision — voir contrat NonConformite.
+    """Pour chaque chapitre, extrait les non-conformités : description et
+    recommandation via LLM, type via classification Python, cohérence
+    thématique vérifiée pour signaler les cas à revoir manuellement.
     """
     noms_chapitres = list(chapitres_avec_codes.keys())
     blocs = _decouper_blocs_par_chapitre(texte, noms_chapitres)
@@ -97,7 +130,11 @@ def extraire_non_conformites(
         bloc = blocs.get(nom_chapitre, "")
         lignes_constats = _extraire_lignes_constats(bloc)
 
-        if not lignes_constats or "aucun écart" in bloc.lower():
+        if not lignes_constats:
+            scores.append(1.0)
+            continue
+
+        if _section_declaree_conforme(bloc):
             scores.append(1.0)
             continue
 
@@ -123,22 +160,25 @@ def extraire_non_conformites(
                 continue
 
             texte_source = lignes_constats[i] if i < len(lignes_constats) else ""
-            resume = item["resume_constat"]
-            coherent = est_coherent_avec_chapitre(resume, codes)
-            if not coherent:
+            description = item["resume_constat"]
+
+            est_faux = est_probable_faux_constat(texte_source)
+            coherent = est_coherent_avec_chapitre(description, codes, texte_source=texte_source)
+
+            a_verifier = est_faux or not coherent
+            if a_verifier:
                 nb_a_verifier += 1
 
             toutes_non_conformites.append(
                 NonConformite(
                     chapitre=nom_chapitre,
                     texte_source=texte_source,
-                    resume_constat=resume,
+                    resume_constat=description,
                     recommandation=item.get("recommandation"),
-                    actifs_concernes=item.get("actifs_concernes") or [],
+                    actifs_concernes=item.get("actifs_concernes", []),
                     echeance=item.get("echeance"),
-                    confiance=confiance,
-                    methode_extraction="llm",
-                    a_verifier=not coherent,
+                    a_verifier=a_verifier,
+                    est_note=False,
                 )
             )
 

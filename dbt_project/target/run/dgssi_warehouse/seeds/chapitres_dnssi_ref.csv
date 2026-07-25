@@ -1,0 +1,14 @@
+
+    
+    
+    
+    create table "dgssi"."public_marts"."chapitres_dnssi_ref" ("chapitre_dnssi_id" integer,"code_chapitre" varchar(10),"nom_chapitre" varchar(200),"domaine" varchar(100))
+  ;
+    -- dbt seed --
+    
+          insert into "dgssi"."public_marts"."chapitres_dnssi_ref" ("chapitre_dnssi_id", "code_chapitre", "nom_chapitre", "domaine") values
+          (%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)
+      
+
+;
+  

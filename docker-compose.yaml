@@ -1,26 +1,36 @@
+networks:
+  dgssi-network:
+    driver: bridge
+
 services:
   postgres:
-      image: postgres:16-alpine
-      container_name: dgssi-postgres
-      ports:
-        - "5432:5432"
-      environment:
-        POSTGRES_DB: ${POSTGRES_DB:-dgssi}
-        POSTGRES_USER: ${POSTGRES_USER:-dgssi}
-        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dgssi}"]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+    image: postgres:16-alpine
+    container_name: dgssi-postgres
+    networks:
+      - dgssi-network
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dgssi}
+      POSTGRES_USER: ${POSTGRES_USER:-dgssi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dgssi}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
   minio:
     image: minio/minio:latest
     container_name: dgssi-minio
+    networks:
+      - dgssi-network
     ports:
-      - "9000:9000"   # API S3
-      - "9001:9001"   # Console web
+      - "9000:9000" # API S3
+      - "9001:9001" # Console web
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-dgssi_admin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-changeme123}
@@ -28,7 +38,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: [ "CMD", "mc", "ready", "local" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -36,44 +46,142 @@ services:
   nifi:
     image: apache/nifi:1.27.0
     container_name: dgssi-nifi
+    networks:
+      - dgssi-network
     ports:
-      - "8443:8443"   # Interface web NiFi (HTTPS)
+      - "8443:8443" # Interface web NiFi (HTTPS)
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: admin
-      SINGLE_USER_CREDENTIALS_PASSWORD: dgssiAdmin123!   # 12 caractères minimum, exigé par NiFi
+      SINGLE_USER_CREDENTIALS_PASSWORD: dgssiAdmin123!
     volumes:
       - nifi_data:/opt/nifi/nifi-current/conf
-      - ./data/private:/data/depot_local   # dossier local surveillé par NiFi
+      - ./data/private:/data/depot_local
 
+  # ════════════════════════════════════════════════════
+  # ORCHESTRATION (AIRFLOW)
+  # Port 8085 pour éviter le conflit avec dbt docs (8080)
+  # ════════════════════════════════════════════════════
   airflow:
     build:
       context: .
       dockerfile: docker/airflow/Dockerfile
     container_name: dgssi-airflow
+    networks:
+      - dgssi-network
     ports:
-      - "8080:8080"
+      - "8085:8080" # 8085 sur l'hôte → 8080 dans le conteneur
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # Connexion PostgreSQL (nom du service Docker, pas localhost)
       POSTGRES_HOST: dgssi-postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-dgssi}
       POSTGRES_USER: ${POSTGRES_USER:-dgssi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      # MinIO (nom du service Docker)
       MINIO_ENDPOINT: dgssi-minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-dgssi_admin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-changeme123}
+      # dbt : répertoire profiles dans le projet monté
+      DBT_PROFILES_DIR: /opt/airflow/project/dbt_project
     volumes:
-      - .:/opt/airflow/project
+      - .:/opt/airflow/project # Tout le projet
       - ./airflow/dags:/opt/airflow/dags
-      - airflow_data:/opt/airflow
+      # Note: pas de volume airflow_data pour forcer un état propre
+      #       Les métadonnées Airflow utilisent SQLite interne (SequentialExecutor)
     command: standalone
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # ════════════════════════════════════════════════════
+  # MONITORING — POSTGRES EXPORTER
+  # Expose les métriques PostgreSQL pour Prometheus
+  # ════════════════════════════════════════════════════
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: dgssi-postgres-exporter
+    networks:
+      - dgssi-network
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-dgssi}:${POSTGRES_PASSWORD:-changeme}@dgssi-postgres:5432/${POSTGRES_DB:-dgssi}?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ════════════════════════════════════════════════════
+  # MONITORING — PROMETHEUS
+  # Collecte et stocke les métriques
+  # ════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dgssi-prometheus
+    networks:
+      - dgssi-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d' # Garde 7 jours de métriques
+      - '--web.enable-lifecycle'
+    depends_on:
+      - postgres-exporter
+    restart: unless-stopped
+
+  # ════════════════════════════════════════════════════
+  # MONITORING — GRAFANA
+  # Visualisation des métriques et alertes
+  # ════════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dgssi-grafana
+    networks:
+      - dgssi-network
+    ports:
+      - "3000:3000"
+    environment:
+      # Compte admin Grafana
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: dgssi_grafana
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Plugin PostgreSQL natif (déjà inclus dans Grafana)
+      GF_INSTALL_PLUGINS: ""
+      # URL publique (pour les liens dans les alertes)
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      # Alerting activé
+      GF_ALERTING_ENABLED: "true"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
 volumes:
+  # ── Volumes récupérés du projet original ──────────────
+  # Contiennent toutes les données existantes (NiFi flows, MinIO buckets, PostgreSQL tables)
   minio_data:
+    external: true
+    name: dgssi-compilance_minio_data
   nifi_data:
+    external: true
+    name: dgssi-compilance_nifi_data
   postgres_data:
-  airflow_data:
+    external: true
+    name: dgssi-compilance_postgres_data
+  # ── Volumes propres à cette copie ─────────────────────
+  prometheus_data:
+  grafana_data:
+    # airflow_data retiré volontairement — état propre à chaque rebuild
+

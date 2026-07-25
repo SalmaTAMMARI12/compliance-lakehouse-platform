@@ -10,22 +10,14 @@ from dgssi_platform.infrastructure.database.models.audit_model import (
 )
 from dgssi_platform.infrastructure.database.session import get_session
 
-
-def sauvegarder_audit(audit: Audit, confiance_extraction: float) -> int:
+def trouver_audit_par_hash(hash_sha256: str) -> int | None:
     with get_session() as session:
-        existant = (
-            session.query(AuditModel)
-            .filter_by(
-                iiv_nom=audit.iiv.nom,
-                prestataire_audit=audit.prestataire_audit,
-                taux_conformite_global=audit.taux_conformite_global,
-            )
-            .first()
-        )
-        if existant:
-            return existant.id  # déjà en base, on ne duplique pas
-
+        existant = session.query(AuditModel).filter_by(hash_sha256=hash_sha256).first()
+        return existant.id if existant else None
+def sauvegarder_audit(audit: Audit, confiance_extraction: float, hash_sha256: str) -> int:
+    with get_session() as session:
         modele = AuditModel(
+            hash_sha256=hash_sha256,
             iiv_nom=audit.iiv.nom,
             iiv_secteur=audit.iiv.secteur,
             prestataire_audit=audit.prestataire_audit,
@@ -33,6 +25,10 @@ def sauvegarder_audit(audit: Audit, confiance_extraction: float) -> int:
             taux_conformite_global=audit.taux_conformite_global,
             confiance_extraction=confiance_extraction,
             confiance_par_categorie=audit.confiance_extraction,
+            nb_ecarts_par_type=audit.nb_ecarts_par_type,
+            perimetre_fonctionnel=audit.perimetre_fonctionnel,
+            perimetre_technique=audit.audit_technique.perimetre_technique if audit.audit_technique else [],
+            referentiels_utilises=audit.audit_technique.referentiels_utilises if audit.audit_technique else [],
         )
         for v in audit.historique_versions:
             modele.historique_versions.append(
@@ -50,8 +46,6 @@ def sauvegarder_audit(audit: Audit, confiance_extraction: float) -> int:
                     )
                 )
 
-        # Chapitres et non-conformités associées — les deux étaient
-        # calculés par ExtracteurHybride mais jamais persistés avant.
         non_conformites_par_chapitre = {}
         for nc in audit.non_conformites:
             non_conformites_par_chapitre.setdefault(nc.chapitre, []).append(nc)
@@ -60,6 +54,7 @@ def sauvegarder_audit(audit: Audit, confiance_extraction: float) -> int:
             chapitre_modele = ChapitreModel(
                 nom_chapitre=chap.nom_chapitre,
                 clauses=chap.clauses,
+                notes_audit_synthese=chap.notes_audit_synthese,
             )
             for nc in non_conformites_par_chapitre.get(chap.nom_chapitre, []):
                 chapitre_modele.non_conformites.append(
@@ -72,6 +67,7 @@ def sauvegarder_audit(audit: Audit, confiance_extraction: float) -> int:
                         confiance=nc.confiance,
                         methode_extraction=nc.methode_extraction,
                         a_verifier=nc.a_verifier,
+                        est_note=nc.est_note,
                     )
                 )
             modele.chapitres.append(chapitre_modele)

@@ -14,6 +14,9 @@ select
     date_extraction,
     confiance_extraction,
     confiance_par_categorie,
-    chemin_gold
+    chemin_gold,
+    nb_ecarts_par_type,
+    perimetre_fonctionnel,
+    perimetre_technique
 from "dgssi"."public"."audits"
   );

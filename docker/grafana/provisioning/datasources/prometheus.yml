@@ -1,0 +1,27 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # Datasource PostgreSQL directe (pour les alertes sur nb_ecarts_critiques)
+  # uid fixe : référencé par les alertes dans provisioning/alerting/dgssi_alerts.yml
+  - name: PostgreSQL-DGSSI
+    uid: PostgreSQL-DGSSI
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: dgssi-postgres:5432
+    database: dgssi
+    user: dgssi
+    secureJsonData:
+      password: changeme
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    editable: false
+

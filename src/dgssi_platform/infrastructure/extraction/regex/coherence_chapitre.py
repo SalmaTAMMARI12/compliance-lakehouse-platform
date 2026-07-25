@@ -30,12 +30,36 @@ def _extraire_racines_thematiques(codes_dnssi: list[str]) -> set[str]:
     return racines
 
 
-def est_coherent_avec_chapitre(description: str, codes_dnssi: list[str]) -> bool:
-    """Retourne True si la description semble appartenir au bon chapitre,
-    False si aucun signal thématique ne correspond (à vérifier manuellement)."""
-    racines = _extraire_racines_thematiques(codes_dnssi)
-    if not racines:
-        return True  # pas assez d'information pour juger, on ne bloque pas
+_MARQUEURS_NEGATIFS = [
+    "n'est pas", "ne sont pas", "ne dispose pas", "absence de", "aucun",
+    "aucune", "non conforme", "ne couvre pas", "en cours de", "pas encore",
+    "pas validé", "non validé", "incomplet", "défaut de", "manque de"
+]
 
-    texte = description.lower()
-    return any(racine in texte for racine in racines)
+def est_coherent_avec_chapitre(description: str, codes_dnssi: list[str], texte_source: str = "") -> bool:
+    """Retourne True si la description semble appartenir au bon chapitre,
+    False si aucun signal thématique ne correspond (à vérifier manuellement).
+    Vérifie également la présence de formulations négatives typiques d'un écart."""
+    racines = _extraire_racines_thematiques(codes_dnssi)
+    
+    texte_complet = (description + " " + texte_source).lower()
+    
+    # 1. Vérification thématique
+    est_thematique = True
+    if racines:
+        est_thematique = any(racine in texte_complet for racine in racines)
+        
+    # 2. Vérification de la formulation (si on a la source originale)
+    est_negatif = True
+    if texte_source:
+        est_negatif = any(m in texte_complet for m in _MARQUEURS_NEGATIFS)
+        
+    # Si le texte source a été fourni, on exige au moins l'un des deux signaux
+    if texte_source:
+        return est_thematique or est_negatif
+        
+    # Si on n'a que la description LLM, on se fie à la thématique
+    if not racines:
+        return True  # pas assez d'information pour juger
+        
+    return est_thematique

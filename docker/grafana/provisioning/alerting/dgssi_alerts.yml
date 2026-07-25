@@ -1,0 +1,159 @@
+apiVersion: 1
+
+# Règles d'alerte DGSSI
+# Alerte quand nb_ecarts_critiques > 10 dans la table evaluations_conformite
+groups:
+  - orgId: 1
+    name: dgssi_conformite_alerts
+    folder: DGSSI
+    interval: 5m   # Évaluation toutes les 5 minutes
+    rules:
+
+      # ─────────────────────────────────────────────────────
+      # Alerte : Écarts critiques élevés
+      # ─────────────────────────────────────────────────────
+      - uid: dgssi-ecarts-critiques
+        title: "IIV — Trop d'écarts critiques"
+        condition: C
+        data:
+          # Requête SQL sur PostgreSQL
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PostgreSQL-DGSSI
+            model:
+              rawSql: >
+                SELECT
+                  NOW() as time,
+                  ec.audit_id,
+                  a.iiv_nom,
+                  ec.nb_ecarts_critiques
+                FROM public_marts.fact_conformite ec
+                JOIN public_marts.dim_audit a ON ec.audit_id = a.audit_id
+                WHERE ec.nb_ecarts_critiques > 10
+                ORDER BY ec.nb_ecarts_critiques DESC
+                LIMIT 10
+              format: table
+
+          # Seuil : alerte si au moins 1 ligne retournée
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: count
+              conditions: []
+
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "IIV avec trop d'écarts critiques détectés"
+          description: >
+            Une ou plusieurs IIV ont plus de 10 écarts critiques de conformité.
+            Vérifier la table evaluations_conformite dans PostgreSQL.
+        labels:
+          severity: critical
+          team: dgssi
+
+      # ─────────────────────────────────────────────────────
+      # Alerte : Taux de conformité global < 50%
+      # ─────────────────────────────────────────────────────
+      - uid: dgssi-taux-conformite-bas
+        title: "IIV — Taux de conformité critique (< 50%)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PostgreSQL-DGSSI
+            model:
+              rawSql: >
+                SELECT
+                  NOW() as time,
+                  COUNT(*) as nb_iiv_non_conformes
+                FROM public_marts.dim_audit
+                WHERE taux_conformite_global < 50
+              format: table
+
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              conditions: []
+
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Taux de conformité critique détecté"
+          description: >
+            Une ou plusieurs IIV ont un taux de conformité inférieur à 50%.
+            Action immédiate requise.
+        labels:
+          severity: warning
+          team: dgssi
+
+# Point de contact pour les notifications
+# (configurable dans l'UI Grafana : Alerting → Contact points)
+contactPoints:
+  - orgId: 1
+    name: dgssi-webhook
+    receivers:
+      - uid: dgssi-webhook-receiver
+        type: webhook
+        settings:
+          url: http://localhost:5000/api/alerts   # Dashboard Flask existant
+          httpMethod: POST
+        disableResolveMessage: false
+
+# Politique de notification : route les alertes DGSSI vers le webhook
+# La route racine NE DOIT PAS avoir de matchers (exigence Grafana).
+# Toutes les alertes sont envoyées au webhook dgssi par défaut.
+policies:
+  - orgId: 1
+    receiver: dgssi-webhook
+    group_by:
+      - grafana_folder
+      - alertname
+
+
+

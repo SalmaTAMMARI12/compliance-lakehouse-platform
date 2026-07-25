@@ -1,48 +1,82 @@
-version: 2
+﻿version: 2
 
 sources:
   - name: dgssi
     schema: public
+    description: Tables sources brutes chargees dans PostgreSQL par le pipeline d'ingestion.
     tables:
       - name: audits
+        description: Rapports d'audit bruts extraits des PDF via LLM.
       - name: chapitres
+        description: Chapitres evalues dans chaque rapport d'audit.
       - name: non_conformites
+        description: Non-conformites detectees dans chaque chapitre audite.
       - name: evaluations_conformite
+        description: Evaluations de conformite globales par audit.
       - name: historique_versions
+        description: Historique des versions de traitement des rapports.
       - name: resultats_techniques
+        description: Resultats techniques par equipement audite.
 
 models:
   - name: stg_audits
+    description: >
+      Staging des audits. Renommage et nettoyage des colonnes source.
+      Une ligne = un rapport d'audit complet.
     columns:
       - name: audit_id
-        tests: [unique, not_null]
+        description: Identifiant unique de l'audit (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
 
   - name: stg_chapitres
+    description: >
+      Staging des chapitres. Une ligne = un chapitre evalue dans un audit.
     columns:
       - name: chapitre_id
-        tests: [unique, not_null]
+        description: Identifiant unique du chapitre (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
       - name: audit_id
+        description: Cle etrangere vers stg_audits.
         tests:
           - not_null
           - relationships:
-              to: ref('stg_audits')
-              field: audit_id
+              arguments:
+                to: ref('stg_audits')
+                field: audit_id
 
   - name: stg_non_conformites
+    description: >
+      Staging des non-conformites. Une ligne = une non-conformite detectee.
     columns:
       - name: non_conformite_id
-        tests: [unique, not_null]
+        description: Identifiant unique de la non-conformite (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
       - name: chapitre_id
+        description: Cle etrangere vers stg_chapitres.
         tests:
           - not_null
           - relationships:
-              to: ref('stg_chapitres')
-              field: chapitre_id
+              arguments:
+                to: ref('stg_chapitres')
+                field: chapitre_id
+
   - name: stg_evaluations_conformite
+    description: >
+      Staging des evaluations de conformite. Une ligne = une evaluation par audit.
     columns:
       - name: evaluation_id
-        tests: [unique, not_null]
+        description: Identifiant unique de l'evaluation (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
       - name: audit_id
+        description: Cle etrangere vers stg_audits.
         tests:
           - not_null
           - relationships:
@@ -51,10 +85,16 @@ models:
                 field: audit_id
 
   - name: stg_historique_versions
+    description: >
+      Staging de l'historique des versions. Suivi des re-traitements de rapports.
     columns:
       - name: historique_id
-        tests: [unique, not_null]
+        description: Identifiant unique de la version (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
       - name: audit_id
+        description: Cle etrangere vers stg_audits.
         tests:
           - not_null
           - relationships:
@@ -63,14 +103,19 @@ models:
                 field: audit_id
 
   - name: stg_resultats_techniques
+    description: >
+      Staging des resultats techniques. Une ligne = un equipement audite dans un audit.
     columns:
       - name: resultat_id
-        tests: [unique, not_null]
+        description: Identifiant unique du resultat (renomme depuis 'id').
+        tests:
+          - unique
+          - not_null
       - name: audit_id
+        description: Cle etrangere vers stg_audits.
         tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('stg_audits')
                 field: audit_id
-                

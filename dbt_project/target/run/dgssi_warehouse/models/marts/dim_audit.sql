@@ -17,7 +17,10 @@
     a.date_extraction,
     a.confiance_extraction,
     a.confiance_par_categorie,
-    a.chemin_gold
+    a.chemin_gold,
+    a.nb_ecarts_par_type,
+    a.perimetre_fonctionnel,
+    a.perimetre_technique
 from "dgssi"."public_staging"."stg_audits" a
 left join "dgssi"."public_marts"."dim_iiv" iiv
     on a.iiv_nom = iiv.iiv_nom

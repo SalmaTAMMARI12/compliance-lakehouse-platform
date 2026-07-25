@@ -1,0 +1,15 @@
+chapitre_dnssi_id,code_chapitre,nom_chapitre,domaine
+1,CH01,Organisation de la sécurité des systèmes d'information,Gouvernance
+2,CH02,Politique de sécurité des systèmes d'information,Gouvernance
+3,CH03,Gestion des actifs,Gouvernance
+4,CH04,Sécurité liée aux ressources humaines,Gouvernance
+5,CH05,Sécurité physique et environnementale,Protection physique
+6,CH06,Gestion des accès et des identités,Contrôle d'accès
+7,CH07,Cryptographie et chiffrement,Protection technique
+8,CH08,Sécurité des opérations,Exploitation
+9,CH09,Sécurité des communications et réseaux,Infrastructure
+10,CH10,Acquisition développement et maintenance des SI,Développement
+11,CH11,Relations avec les fournisseurs et tiers,Chaîne d'approvisionnement
+12,CH12,Gestion des incidents de sécurité,Résilience
+13,CH13,Continuité d'activité et plan de reprise,Résilience
+14,CH14,Conformité réglementaire et audits,Conformité

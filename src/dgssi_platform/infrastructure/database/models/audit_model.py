@@ -7,7 +7,6 @@ from datetime import date, datetime
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-
 class Base(DeclarativeBase):
     pass
 
@@ -16,6 +15,7 @@ class AuditModel(Base):
     __tablename__ = "audits"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    hash_sha256: Mapped[str] = mapped_column(String(64), unique=True)
     iiv_nom: Mapped[str] = mapped_column(String(200))
     iiv_secteur: Mapped[str] = mapped_column(String(200))
     prestataire_audit: Mapped[str] = mapped_column(String(200))
@@ -24,6 +24,15 @@ class AuditModel(Base):
     date_extraction: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     confiance_extraction: Mapped[float] = mapped_column(Float)
     confiance_par_categorie: Mapped[dict] = mapped_column(JSON, default=dict)
+    nb_ecarts_par_type: Mapped[dict] = mapped_column(JSON, default=dict)
+    perimetre_fonctionnel: Mapped[list] = mapped_column(JSON, default=list)
+    perimetre_technique: Mapped[list] = mapped_column(JSON, default=list)
+    referentiels_utilises: Mapped[list] = mapped_column(JSON, default=list)
+    # perimetre_fonctionnel = section 1.1 (systemes concernes par l'audit
+    # de conformite DNSSI). perimetre_technique = section 4.1 (equipements
+    # concernes par l'audit technique). Deux perimetres distincts du meme
+    # rapport, tous deux rattaches directement a AuditModel.
+
 
     historique_versions: Mapped[list["HistoriqueVersionModel"]] = relationship(
         back_populates="audit", cascade="all, delete-orphan"
@@ -67,6 +76,7 @@ class ChapitreModel(Base):
     audit_id: Mapped[int] = mapped_column(ForeignKey("audits.id"))
     nom_chapitre: Mapped[str] = mapped_column(String(200))
     clauses: Mapped[list] = mapped_column(JSON, default=list)
+    notes_audit_synthese: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     # Codes DNSSI du chapitre (ex. ["POL-RISQUE", "POL-FORMEL"]) — le
     # libellé/objectif de chaque code vit dans le référentiel YAML, pas ici.
 
@@ -89,6 +99,7 @@ class NonConformiteModel(Base):
     confiance: Mapped[float] = mapped_column(Float, default=0.0)
     methode_extraction: Mapped[str] = mapped_column(String(20), default="llm")
     a_verifier: Mapped[bool] = mapped_column(default=False)
+    est_note: Mapped[bool] = mapped_column(default=False)
     # a_verifier=True : incohérence thématique détectée entre le chapitre
     # attendu et le contenu extrait (voir coherence_chapitre.py) — nécessite
     # une revue humaine avant d'être considéré fiable pour Power BI.
