@@ -29,3 +29,11 @@ postgres_data/
 
 # Airflow
 airflow/logs/.coverage
+
+# Modèles LLM locaux
+*.gguf
+
+# Tests et distribution
+.pytest_cache/
+dist/
+*.egg-info/
