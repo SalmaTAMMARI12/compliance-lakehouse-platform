@@ -18,6 +18,17 @@ Corrections apportées vs version précédente :
   telle quelle : elle reflète un vrai signal de qualité déjà fiable.
 """
 
+import sys
+import json
+from pathlib import Path
+
+# Add parent directory to sys.path to allow importing from src
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from src.dgssi_platform.shared.config import get_settings
+from src.dgssi_platform.infrastructure.referentiel.loader import obtenir_exigences
+from src.dgssi_platform.domain.services.calculer_taux_conformite import _normaliser
+
 from flask import Flask, render_template_string
 import psycopg2
 import psycopg2.extras
@@ -26,9 +37,13 @@ app = Flask(__name__)
 
 
 def get_db():
+    settings = get_settings()
     return psycopg2.connect(
-        host="localhost", port=5432, dbname="dgssi",
-        user="dgssi", password="changeme",
+        host=settings.postgres_host,
+        port=settings.postgres_port,
+        dbname=settings.postgres_db,
+        user=settings.postgres_user,
+        password=settings.postgres_password,
         cursor_factory=psycopg2.extras.RealDictCursor
     )
 
@@ -173,9 +188,6 @@ tr:hover td { background:#f8fafc; }
     <span style="color:#cbd5e1; font-size:14px;"></span>
   </div>
   <div style="display:flex; justify-content: flex-end; gap:10px;">
-    <button class="btn-print" onclick="window.printFullDashboard()" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
-       Imprimer Rapport Complet
-    </button>
     <button class="btn-print" onclick="window.printExecutiveSummary()" style="background: white; color: #0a192f; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s ease;">
        Télécharger Synthèse Exécutive
     </button>
@@ -213,27 +225,15 @@ tr:hover td { background:#f8fafc; }
       <table style="width:100%; border:1px solid #e2e8f0;">
         <thead>
           <tr style="background:#f8fafc;">
-            <th style="width:20%">Chapitre</th>
-            <th style="width:15%">Clauses couvertes</th>
-            <th style="width:35%">Note d'audit (Synthèse)</th>
-            <th style="width:30%">Constats</th>
+            <th style="width:25%">Chapitre</th>
+            <th style="width:40%">Note d'audit (Synthèse)</th>
+            <th style="width:35%">Constats</th>
           </tr>
         </thead>
         <tbody>
           {% for c in chapitres %}
           <tr>
             <td><strong>{{ c.nom_chapitre }}</strong></td>
-            <td>
-              {% if c.clauses %}
-                <ul style="padding-left:15px; margin:0; font-size:12px;">
-                  {% for clause in c.clauses %}
-                  <li>{{ clause }}</li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                <span style="color:#94a3b8; font-style:italic;">Aucune clause</span>
-              {% endif %}
-            </td>
             <td>
               {% if c.notes_audit_synthese %}
                 <div style="font-size:13px; color:#334155;">{{ c.notes_audit_synthese }}</div>
@@ -416,14 +416,16 @@ tr:hover td { background:#f8fafc; }
       <div class="card chapter-detail-card" style="margin-bottom:20px;">
         <h2 style="color: #0f3460; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">{{ c.nom_chapitre }}</h2>
         
-        {% if c.notes_audit %}
+        {% if c.notes_audit_synthese %}
         <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #0f3460; margin-bottom: 15px;">
           <p style="margin-top: 0; font-weight: 600; color: #333;">Notes d'audit :</p>
           <p style="font-size: 13px; color: #555; line-height: 1.5;">{{ c.notes_audit_synthese }}</p>
+          {% if c.notes_audit %}
           <details style="margin-top: 10px;">
             <summary style="cursor: pointer; color: #0f3460; font-weight: 600; font-size: 11px;">Voir la source</summary>
             <div style="margin-top: 8px; padding: 10px; background-color: #fff; border: 1px solid #ddd; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-word;">{{ c.notes_audit }}</div>
           </details>
+          {% endif %}
         </div>
         {% endif %}
 
@@ -588,15 +590,19 @@ def dashboard():
     nc_total = len(ecarts)
     nc_a_verifier = sum(1 for nc in ecarts if nc.get("a_verifier"))
 
-    # Couverture référentiel calculée (pas codée en dur) : somme des clauses
-    # réellement rattachées aux chapitres en base, vs total attendu du YAML.
-    nb_clauses_total = sum(c["nb_clauses"] for c in chapitres) or 1
-    # Sans accès direct au YAML depuis ce script, on prend le total observé
-    # comme référence de couverture interne (100% si tous les chapitres du
-    # rapport ont bien leurs clauses rattachées, ce qui est le cas testé).
-    couverture = 100 if all(c["nb_clauses"] > 0 for c in chapitres) else round(
-        100 * sum(1 for c in chapitres if c["nb_clauses"] > 0) / max(len(chapitres), 1)
-    )
+    # Couverture référentiel calculée par rapport au total officiel du YAML DNSSI v2
+    exigences = obtenir_exigences()
+    codes_couverts_normalises = set()
+    for c in chapitres:
+        if c.get("clauses"):
+            # c["clauses"] is returned as list by RealDictCursor if cast to json in Postgres, or string. Secure parsing:
+            clauses = c["clauses"] if isinstance(c["clauses"], list) else json.loads(c["clauses"])
+            for code in clauses:
+                codes_couverts_normalises.add(_normaliser(code))
+                
+    nb_couverts = sum(1 for e in exigences if _normaliser(e.code) in codes_couverts_normalises)
+    nb_clauses_total = len(exigences)
+    couverture = round(100 * nb_couverts / nb_clauses_total) if nb_clauses_total > 0 else 0
 
     nb_ecarts_par_type = audit.get("nb_ecarts_par_type") or {}
 
