@@ -78,26 +78,22 @@ def _extraire_lignes_constats(bloc: str) -> list[str]:
     return constats
 
 
-def _section_declaree_conforme(bloc: str) -> bool:
-    """Vérifie si la section Constats elle-même (pas tout le bloc chapitre)
-    COMMENCE par 'conforme' — plus sûr qu'une recherche de sous-chaîne sur
-    tout le bloc, qui pourrait matcher une phrase de clôture optimiste
-    apparaissant APRÈS un vrai écart déjà listé.
-
-    Tolère les artefacts d'extraction PDF où chaque puce commence par un
-    double tiret ("- -Conforme...") au lieu d'un tiret simple — sans ce
-    nettoyage, startswith("conforme") échoue à tort et laisse passer un
-    chapitre pourtant déclaré conforme comme une fausse non-conformité
-    (bug confirmé sur 3 chapitres du rapport de référence : Organisation,
-    RH, Sécurité physique — tous les trois avaient fuité dans
-    non_conformites avant ce correctif).
+def _section_declaree_conforme(lignes_constats: list[str]) -> bool:
+    """Vérifie si TOUTES les lignes de constats déjà extraites se résument à
+    une déclaration de conformité (aucun écart réel) — évalué directement
+    sur les lignes qui seraient sinon envoyées au LLM, pas sur une
+    recherche du mot "Constats" dans le bloc brut (position peu fiable :
+    peut être absente, dupliquée ou déplacée par un artefact de saut de
+    page — confirmé sur le chapitre "Organisation", où "Constats"
+    n'apparaît qu'une fois, hors contexte, sans lien avec la vraie section
+    de fin).
     """
-    idx = bloc.find("Constats")
-    if idx == -1:
+    if not lignes_constats:
         return False
-    section = bloc[idx + len("Constats"):].strip(" :\n")[:200]
-    section_nettoyee = re.sub(r"^[\s\-–—]+", "", section)
-    return section_nettoyee.strip().lower().startswith("conforme")
+    texte_nettoye = " ".join(
+        re.sub(r"^[\s\-–—]+", "", l).strip().lower() for l in lignes_constats
+    )
+    return texte_nettoye.startswith("conforme")
 
 
 def _valider_item_llm(item: dict) -> tuple[bool, str]:
@@ -134,7 +130,7 @@ def extraire_non_conformites(
             scores.append(1.0)
             continue
 
-        if _section_declaree_conforme(bloc):
+        if _section_declaree_conforme(lignes_constats):
             scores.append(1.0)
             continue
 
