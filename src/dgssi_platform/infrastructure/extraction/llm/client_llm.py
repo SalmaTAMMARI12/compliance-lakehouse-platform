@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any
 from dgssi_platform.shared.logging import get_logger
 
+import os
+
 logger = get_logger(__name__)
 
-_MODEL_PATH = Path("C:/Users/hp/Downloads/qwen2.5-1.5b-instruct-q4_k_m.gguf")
+_MODEL_PATH = Path(os.environ.get("LLM_MODEL_PATH", ""))
 _llm_instance = None
 
 _JSON_GRAMMAR = r'''
@@ -29,6 +31,11 @@ ws     ::= [ \t\n\r]*
 def _get_llm():
     global _llm_instance
     if _llm_instance is None:
+        if not _MODEL_PATH.exists():
+            raise FileNotFoundError(
+                f"Modèle LLM introuvable : {_MODEL_PATH}. "
+                "Définis LLM_MODEL_PATH vers le fichier .gguf (voir README)."
+            )
         from llama_cpp import Llama
         logger.info("Chargement du modèle LLM : %s", _MODEL_PATH)
         _llm_instance = Llama(
