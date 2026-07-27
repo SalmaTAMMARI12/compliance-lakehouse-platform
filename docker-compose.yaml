@@ -169,19 +169,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  # ── Volumes récupérés du projet original ──────────────
-  # Contiennent toutes les données existantes (NiFi flows, MinIO buckets, PostgreSQL tables)
   minio_data:
-    external: true
-    name: dgssi-compilance_minio_data
   nifi_data:
-    external: true
-    name: dgssi-compilance_nifi_data
   postgres_data:
-    external: true
-    name: dgssi-compilance_postgres_data
-  # ── Volumes propres à cette copie ─────────────────────
   prometheus_data:
   grafana_data:
     # airflow_data retiré volontairement — état propre à chaque rebuild
-
