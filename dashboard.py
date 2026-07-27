@@ -16,6 +16,9 @@ Corrections apportées vs version précédente :
   en base vs le nombre total de clauses du référentiel YAML.
 - La colonne "Statut" (a_verifier) sur les non-conformités est conservée
   telle quelle : elle reflète un vrai signal de qualité déjà fiable.
+- Ajout de /api/alerts : webhook recevant les notifications Grafana
+  Alerting (règles métier DGSSI), voir dgssi_alerts.yml. Log uniquement
+  pour l'instant, pas de persistance.
 """
 
 import sys
@@ -29,7 +32,7 @@ from src.dgssi_platform.shared.config import get_settings
 from src.dgssi_platform.infrastructure.referentiel.loader import obtenir_exigences
 from src.dgssi_platform.domain.services.calculer_taux_conformite import _normaliser
 
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request, jsonify
 import psycopg2
 import psycopg2.extras
 
@@ -618,6 +621,25 @@ def dashboard():
         nb_ecarts_par_type=nb_ecarts_par_type,
     )
 
+@app.route("/api/alerts", methods=["POST"])
+def recevoir_alerte():
+    """Webhook Grafana Alerting — reçoit les notifications des alertes
+    métier DGSSI (écarts critiques, taux de conformité bas). Log
+    uniquement pour l'instant, pas de persistance ni d'action
+    automatique — suffisant pour prouver que le canal fonctionne
+    de bout en bout, une vraie action (email, ticket...) serait une
+    extension future.
+    """
+    payload = request.get_json(silent=True) or {}
+    alertes = payload.get("alerts", [])
+    for alerte in alertes:
+        nom = alerte.get("labels", {}).get("alertname", "inconnue")
+        statut = alerte.get("status", "inconnu")
+        app.logger.warning("Alerte Grafana reçue : %s (statut=%s)", nom, statut)
+    return jsonify({"recu": True, "nb_alertes": len(alertes)}), 200
 
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
