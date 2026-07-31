@@ -17,6 +17,9 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -80,7 +83,11 @@ def executer(nom_rapport: str, confiance_extraction_defaut: float = 0.92) -> int
     # --- Étape 4 : sauvegarde PostgreSQL ---
     try:
         print("\n[4/4] Sauvegarde PostgreSQL...")
-        audit_id = sauvegarder_audit(audit, confiance_extraction=confiance_extraction_defaut)
+        audit_id = sauvegarder_audit(
+            audit, 
+            confiance_extraction=confiance_extraction_defaut,
+            hash_sha256=nom_rapport,  # Évite la collision UNIQUE sur ""
+        )
 
         evaluation = evaluer_conformite_globale(audit)
         classement = classer_elements_par_exposition(audit)

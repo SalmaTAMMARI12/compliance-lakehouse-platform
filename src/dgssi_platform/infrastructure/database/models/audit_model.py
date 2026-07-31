@@ -25,8 +25,7 @@ class AuditModel(Base):
     confiance_extraction: Mapped[float] = mapped_column(Float)
     confiance_par_categorie: Mapped[dict] = mapped_column(JSON, default=dict)
     nb_ecarts_par_type: Mapped[dict] = mapped_column(JSON, default=dict)
-    perimetre_fonctionnel: Mapped[list] = mapped_column(JSON, default=list)
-    perimetre_technique: Mapped[list] = mapped_column(JSON, default=list)
+    perimetres: Mapped[dict] = mapped_column(JSON, default=dict)
     referentiels_utilises: Mapped[list] = mapped_column(JSON, default=list)
     # perimetre_fonctionnel = section 1.1 (systemes concernes par l'audit
     # de conformite DNSSI). perimetre_technique = section 4.1 (equipements

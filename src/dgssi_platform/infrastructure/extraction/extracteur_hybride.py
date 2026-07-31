@@ -1,6 +1,11 @@
 """ExtracteurHybride — implémentation du port Extracteur, orchestre les
-sous-extracteurs par famille de données (regex pour l'instant, NLP/LLM
-viendra plus tard pour les constats en texte libre).
+sous-extracteurs par famille de données :
+- Regex pour les données structurées (codes DNSSI, versions, dates)
+- LLM (Qwen) pour le contenu sémantique (scores, constats, synthèses, prestataire)
+
+Stratégie LLM-first pour les scores et le prestataire : le LLM est appelé
+en premier car chaque prestataire d'audit utilise sa propre notation.
+Fallback regex si le LLM échoue.
 """
 from __future__ import annotations
 
@@ -13,6 +18,12 @@ from dgssi_platform.domain.interfaces.parseur import DocumentBrut
 from dgssi_platform.infrastructure.extraction.regex.extracteur_clauses import (
     extraire_clauses_par_chapitre,
 )
+from dgssi_platform.infrastructure.extraction.regex.extracteur_clauses_tableaux import (
+    extraire_clauses_depuis_tableaux,
+)
+from dgssi_platform.infrastructure.extraction.regex.extracteur_constats_tableaux import (
+    extraire_non_conformites_depuis_tableaux,
+)
 from dgssi_platform.infrastructure.extraction.regex.extracteur_metadonnees import (
     extraire_classification,
     extraire_historique_versions,
@@ -23,6 +34,9 @@ from dgssi_platform.infrastructure.extraction.regex.extracteur_tableaux_chiffres
 )
 from dgssi_platform.infrastructure.extraction.regex.extracteur_texte_libre import (
     extraire_prestataire,
+)
+from dgssi_platform.infrastructure.extraction.llm.extracteur_scores_conformite import (
+    extraire_scores_conformite,
 )
 from dgssi_platform.infrastructure.extraction.llm.extracteur_constats import (
     extraire_non_conformites,
@@ -38,7 +52,7 @@ from dgssi_platform.infrastructure.referentiel.loader import (
 )
 from dgssi_platform.shared.logging import get_logger
 from dgssi_platform.infrastructure.extraction.regex.extracteur_totaux_ecarts import extraire_totaux_ecarts
-from dgssi_platform.infrastructure.extraction.regex.extracteur_perimetre import extraire_perimetre_fonctionnel, extraire_perimetre_technique
+from dgssi_platform.infrastructure.extraction.llm.extracteur_perimetre import extraire_perimetre_llm
 from dgssi_platform.infrastructure.extraction.regex.extracteur_technique_details import extraire_referentiels_utilises, extraire_vulnerabilites_par_categorie
 
 logger = get_logger(__name__)
@@ -65,9 +79,30 @@ class ExtracteurHybride(Extracteur):
 
         classification, conf_classif = extraire_classification(tableaux)
         historique_brut, conf_historique = extraire_historique_versions(tableaux)
-        taux_global, conf_taux = extraire_taux_conformite_global(tableaux)
+        historique = _convertir_versions(historique_brut)
         resultats_element, conf_resultats = extraire_resultats_par_element(tableaux)
-        prestataire, conf_prestataire = extraire_prestataire(texte)
+
+        # --- LLM-first : scores de conformité et prestataire ---
+        # Le LLM absorbe les variations de notation entre prestataires
+        # (pourcentage, /5, lettre, répartition, graphe avec légende...)
+        scores_llm, conf_scores = extraire_scores_conformite(texte, tableaux)
+        taux_global = scores_llm.get("taux_conformite_global")
+        prestataire = scores_llm.get("prestataire")
+        systeme_notation = scores_llm.get("systeme_notation", "inconnu")
+        valeur_brute = scores_llm.get("valeur_brute", "")
+        repartition_llm = scores_llm.get("repartition")
+        taux_par_chapitre_llm = scores_llm.get("taux_par_chapitre")
+        conf_taux = conf_scores
+        conf_prestataire = conf_scores
+
+        # Fallback regex si le LLM n'a trouvé ni taux ni prestataire
+        if taux_global is None:
+            taux_global, conf_taux = extraire_taux_conformite_global(tableaux)
+            if taux_global is not None:
+                systeme_notation = "pourcentage"
+                valeur_brute = f"{taux_global}%"
+        if not prestataire:
+            prestataire, conf_prestataire = extraire_prestataire(texte)
 
         # Les codes DNSSI (...) sont associés aux chapitres par ordre
         # d'apparition (voir extracteur_clauses.py) : les titres Markdown
@@ -76,7 +111,35 @@ class ExtracteurHybride(Extracteur):
         noms_chapitres = obtenir_noms_chapitres_ordonnes()
         clauses_par_chapitre, conf_clauses = extraire_clauses_par_chapitre(texte, noms_chapitres)
 
-        non_conformites, conf_llm = extraire_non_conformites(texte, clauses_par_chapitre)
+        # Fallback tableaux : si le texte ne contient pas les codes DNSSI
+        # (cas typique des rapports DOCX organisationnels où tout est dans les cellules)
+        if conf_clauses < 0.3:
+            logger.info(
+                "Clauses texte insuffisantes (conf=%.2f) — fallback extracteur tableaux",
+                conf_clauses,
+            )
+            clauses_par_chapitre_tab, conf_clauses_tab = extraire_clauses_depuis_tableaux(
+                tableaux, noms_chapitres
+            )
+            if conf_clauses_tab > conf_clauses:
+                clauses_par_chapitre = clauses_par_chapitre_tab
+                conf_clauses = conf_clauses_tab
+                logger.info("Fallback tableaux adopte (conf=%.2f)", conf_clauses)
+
+        non_conformites, conf_llm = extraire_non_conformites(texte, clauses_par_chapitre, tableaux)
+
+        # Fallback tableaux pour les constats : si le LLM n'a rien trouvé
+        # (pas de pattern '- -' dans le texte, constats dans les cellules)
+        if not non_conformites and clauses_par_chapitre:
+            logger.info("Constats LLM=0 — fallback extracteur constats tableaux")
+            non_conformites_tab, conf_nc_tab = extraire_non_conformites_depuis_tableaux(tableaux)
+            if non_conformites_tab:
+                non_conformites = non_conformites_tab
+                conf_llm = conf_nc_tab
+                logger.info(
+                    "Fallback constats tableaux adopte : %d non-conformites",
+                    len(non_conformites),
+                )
 
         # Regroupement par chapitre — permet de peupler ChapitreAudit.constats
         # en plus de la liste à plat Audit.non_conformites. Les deux
@@ -87,15 +150,18 @@ class ExtracteurHybride(Extracteur):
         for nc in non_conformites:
             non_conformites_par_chapitre.setdefault(nc.chapitre, []).append(nc)
 
-        historique = _convertir_versions(historique_brut)
-        perimetre_fonctionnel, conf_perim_fonc = extraire_perimetre_fonctionnel(texte)
-        perimetre_technique, conf_perim_tech = extraire_perimetre_technique(texte)
+        # Extraction LLM des périmètres et référentiels (dynamique)
+        perimetres, referentiels_llm, conf_llm = extraire_perimetre_llm(texte)
+
+        # Extraction regex des métadonnées techniques (fallbacks et détails)
         referentiels_utilises, conf_ref = extraire_referentiels_utilises(texte)
+        if referentiels_llm and conf_llm >= conf_ref:
+            referentiels_utilises = referentiels_llm
+            conf_ref = conf_llm
         vulnerabilites, conf_vuln = extraire_vulnerabilites_par_categorie(texte)
         audit_technique = (
             AuditTechnique(
                 resultats_par_element=resultats_element,
-                perimetre_technique=perimetre_technique,
                 referentiels_utilises=referentiels_utilises,
                 points_amelioration_par_categorie=vulnerabilites,
             )
@@ -116,8 +182,21 @@ class ExtracteurHybride(Extracteur):
 
             synthese = None
             if texte_brut:
+                # Cas 1 : notes d'audit explicites dans le texte → synthétiser
                 synthese, conf_llm_notes = synthetiser_notes_chapitre(nom, texte_brut)
                 conf_notes_list.append(conf_llm_notes)
+            elif nom in non_conformites_par_chapitre and non_conformites_par_chapitre[nom]:
+                # Cas 2 (Phase 3) : pas de section "Notes d'audit" mais des constats
+                # existent → synthétiser les constats pour produire une note
+                constats_texte = "\n".join(
+                    f"- {nc.resume_constat}" for nc in non_conformites_par_chapitre[nom]
+                )
+                synthese, conf_llm_notes = synthetiser_notes_chapitre(nom, constats_texte, est_constats=True)
+                conf_notes_list.append(conf_llm_notes)
+                logger.info(
+                    "Synthèse générée depuis constats pour '%s' (%d constats)",
+                    nom, len(non_conformites_par_chapitre[nom]),
+                )
 
             chapitres.append(
                 ChapitreAudit(
@@ -154,6 +233,10 @@ class ExtracteurHybride(Extracteur):
             historique_versions=historique,
             prestataire_audit=prestataire or "INCONNU",
             taux_conformite_global=taux_global,
+            repartition_globale_controles=repartition_llm or {},
+            taux_par_chapitre={
+                ch: (t, t) for ch, t in (taux_par_chapitre_llm or {}).items()
+            },
             audit_technique=audit_technique,
             chapitres=chapitres,
             non_conformites=non_conformites,
@@ -166,7 +249,10 @@ class ExtracteurHybride(Extracteur):
                 "clauses": conf_clauses,
                 "llm": conf_llm,
                 "totaux_ecarts": conf_totaux,
+                "scores_llm": conf_scores,
             },
             nb_ecarts_par_type=totaux_ecarts,
-            perimetre_fonctionnel=perimetre_fonctionnel,
+            perimetres=perimetres,
+            systeme_notation_source=systeme_notation,
+            valeur_brute_source=valeur_brute,
         )

@@ -47,7 +47,6 @@ class AuditTechnique(BaseModel):
     conformité DNSSI (organisé par équipement, pas par chapitre).
     """
 
-    perimetre_technique: list[str] = []          # §4.1 : noms d'équipements
     referentiels_utilises: list[str] = []         # §4.3 : CIS Benchmarks, DISA STIGs...
     nb_controles_verifies: int | None = None      # §2.1 : "199 contrôles vérifiés"
     nb_constats_majeurs: int | None = None        # §2.1 : "18 majeurs"
@@ -73,7 +72,7 @@ class Audit(BaseModel):
     historique_versions: list[VersionDocument] = []  # page 2
     prestataire_audit: str                            # page 4
     cadre_reglementaire: list[str] = []                # page 4
-    perimetre_fonctionnel: list[str] = []              # page 5
+    perimetres: dict[str, list[str]] = {}              # Dictionnaire dynamique des périmètres (ex: Fonctionnel, Technique, etc.)
 
     taux_conformite_global: float | None = None        # page 9 : 76,70%
     repartition_globale_controles: dict[str, float] = {}
@@ -98,3 +97,13 @@ class Audit(BaseModel):
     # Audit sont en Regex sauf non_conformites (déjà tracé sur NonConformite
     # elle-même) — un champ répété partout avec la même valeur "regex" ne
     # serait pas une vraie information.
+
+    # Traçabilité du système de notation du prestataire — chaque prestataire
+    # d'audit utilise sa propre notation (pourcentage, /5, lettre, répartition).
+    # Le taux_conformite_global est toujours normalisé en %, mais ces champs
+    # gardent la trace de la valeur et du système originaux pour la gouvernance.
+    systeme_notation_source: str = "pourcentage"
+    # "pourcentage" | "note_sur_5" | "note_sur_10" | "lettre" | "repartition" | "inconnu"
+    valeur_brute_source: str = ""
+    # La valeur telle qu'écrite dans le rapport, ex. "76,70%", "3.2/5", "B+"
+

@@ -14,7 +14,8 @@ from dgssi_platform.shared.logging import get_logger
 logger = get_logger(__name__)
 
 _SEUIL_CONFIANCE_MINIMAL = 0.5
-_MOTIF_VERSION = re.compile(r"^V\s?\d+\.\d+$")
+# V optionnel : "V1.0", "V 1.2" ET "1.0", "2.0" sont tous valides
+_MOTIF_VERSION = re.compile(r"^V?\s?\d+\.\d+$")
 
 
 def extraire_classification(tableaux: list[list[list[str]]]) -> tuple[str | None, float]:
@@ -42,19 +43,28 @@ def extraire_historique_versions(
     for tableau in tableaux:
         versions: list[dict[str, str]] = []
         for ligne in tableau:
-            if len(ligne) != 4:
-                continue
-            version, commentaire, date, auteur = ligne
-            if not _MOTIF_VERSION.match(version.strip()):
-                continue
-            versions.append(
-                {
+            # Format 4 colonnes (rapport PDF référence) : version, commentaire, date, auteur
+            if len(ligne) == 4:
+                version, commentaire, date, auteur = ligne
+                if not _MOTIF_VERSION.match(version.strip()):
+                    continue
+                versions.append({
                     "version": version.strip(),
                     "commentaire": commentaire.strip(),
                     "date": date.strip(),
                     "auteur": auteur.strip(),
-                }
-            )
+                })
+            # Format 3 colonnes (rapport DOCX) : version, auteur, commentaire
+            elif len(ligne) == 3:
+                version, auteur, commentaire = ligne
+                if not _MOTIF_VERSION.match(version.strip()):
+                    continue
+                versions.append({
+                    "version": version.strip(),
+                    "commentaire": commentaire.strip(),
+                    "date": "",  # non disponible dans ce format
+                    "auteur": auteur.strip(),
+                })
 
         if not versions:
             continue

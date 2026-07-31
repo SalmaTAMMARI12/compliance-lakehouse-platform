@@ -24,8 +24,14 @@ def extraire_prestataire(texte: str) -> tuple[str | None, float]:
         return None, 0.0
 
     prestataire = match.group(1).strip()
+    
+    # Rejet des termes génériques
+    termes_generiques = ["cabinet d'audit", "prestataire", "l'auditeur", "passi", "cabinet médical", "cabinet", "expert"]
+    if prestataire.lower() in termes_generiques:
+        logger.warning(f"Prestataire rejeté car trop générique : {prestataire}")
+        return None, 0.0
 
-    # Confiance réduite si le résultat est suspicieusement long — signe que
+    # Confiance réduite si le résultat est suspicieusement long
     # le motif a probablement capturé plus qu'un simple nom de prestataire
     # (ex. si "a procédé" apparaît ailleurs dans une autre phrase du document).
     confiance = 0.9 if len(prestataire) < 40 else 0.4

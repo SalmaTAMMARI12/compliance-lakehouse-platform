@@ -25,12 +25,14 @@ import sys
 import json
 from pathlib import Path
 
-# Add parent directory to sys.path to allow importing from src
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Add parent directory and src to sys.path to allow importing from src
+base_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(base_dir))
+sys.path.insert(0, str(base_dir / "src"))
 
-from src.dgssi_platform.shared.config import get_settings
-from src.dgssi_platform.infrastructure.referentiel.loader import obtenir_exigences
-from src.dgssi_platform.domain.services.calculer_taux_conformite import _normaliser
+from dgssi_platform.shared.config import get_settings
+from dgssi_platform.infrastructure.referentiel.loader import obtenir_exigences
+from dgssi_platform.domain.services.calculer_taux_conformite import _normaliser
 
 from flask import Flask, render_template_string, request, jsonify
 import psycopg2
@@ -189,6 +191,15 @@ tr:hover td { background:#f8fafc; }
   <div style="text-align: center;">
     <h1 style="margin:0; font-size:24px; font-weight:700; letter-spacing:-0.5px;">Plateforme de Conformité DGSSI</h1>
     <span style="color:#cbd5e1; font-size:14px;"></span>
+    <form method="get" action="/" style="margin-top: 10px;">
+        <select name="id" onchange="this.form.submit()" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 300px; text-overflow: ellipsis;">
+            {% for a in all_audits %}
+            <option value="{{ a.id }}" {% if a.id == audit.id %}selected{% endif %}>
+                Rapport #{{ a.id }} {% if a.hash_sha256 %} - {{ a.hash_sha256 }}{% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
   </div>
   <div style="display:flex; justify-content: flex-end; gap:10px;">
     <button class="btn-print" onclick="window.printExecutiveSummary()" style="background: white; color: #0a192f; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s ease;">
@@ -214,7 +225,13 @@ tr:hover td { background:#f8fafc; }
       <div><strong>Date d'extraction :</strong> {{ audit.date_extraction.strftime('%d/%m/%Y') }}</div>
       <div><strong>Prestataire :</strong> {{ audit.prestataire_audit }}</div>
       <div><strong>Classification :</strong> {{ audit.classification }}</div>
-      <div><strong>Taux de conformité global :</strong> {{ audit.taux_conformite_global }}%</div>
+      <div><strong>Taux de conformité global :</strong> 
+        {% if audit.taux_conformite_global is not none %}
+          {{ audit.taux_conformite_global }}%
+        {% else %}
+          N/A
+        {% endif %}
+      </div>
       <div><strong>Référentiel utilisé :</strong> 
         {% if audit.referentiels_utilises %}
           {{ audit.referentiels_utilises | join(', ') }}
@@ -309,8 +326,8 @@ tr:hover td { background:#f8fafc; }
     <div id="tab-general" class="tab-content active">
       <!-- KPIs principaux -->
       <div class="kpis" style="grid-template-columns: repeat(2, 1fr);">
-        <div class="kpi {% if audit.taux_conformite_global >= 80 %}ok{% else %}danger{% endif %}">
-          <div class="val">{{ audit.taux_conformite_global }}%</div>
+        <div class="kpi {% if audit.taux_conformite_global is not none and audit.taux_conformite_global >= 80 %}ok{% elif audit.taux_conformite_global is none %}warn{% else %}danger{% endif %}">
+          <div class="val">{{ audit.taux_conformite_global if audit.taux_conformite_global is not none else 'N/A' }}{% if audit.taux_conformite_global is not none %}%{% endif %}</div>
           <div class="lbl">Taux de conformité global</div>
         </div>
         <div class="kpi ok">
@@ -352,18 +369,31 @@ tr:hover td { background:#f8fafc; }
 
     <!-- ONGLET ORGANISATIONNEL -->
     <div id="tab-orga" class="tab-content">
-      <!-- Périmètre fonctionnel -->
+      <!-- Périmètres extraits dynamiquement (Volet Organisationnel) -->
       <div class="card" style="margin-bottom:20px;">
-        <h2>Périmètre fonctionnel (§1.1 — audit de conformité)</h2>
-        {% if audit.perimetre_fonctionnel %}
-        <ul class="perimetre-list">
-          {% for p in audit.perimetre_fonctionnel %}
-          <li>{{ p }}</li>
+        <h2>Périmètres Organisationnels / Fonctionnels</h2>
+        {% set ns_orga = namespace(has_orga=false) %}
+        {% if audit.perimetres %}
+          <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          {% for nom_perimetre, elements in audit.perimetres.items() %}
+            {% if 'technique' not in nom_perimetre|lower %}
+              {% set ns_orga.has_orga = true %}
+              <div style="background:#f8fafc; padding:15px; border-radius:12px; min-width:250px;">
+                <div style="font-size:14px; color:#64748b; font-weight:600; text-transform:uppercase; margin-bottom:10px;">{{ nom_perimetre }}</div>
+                <ul class="perimetre-list" style="margin:0;">
+                  {% for p in elements %}
+                  <li>{{ p }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
           {% endfor %}
-        </ul>
-        {% else %}
-        <p style="color:#999; font-size:13px;">Non disponible pour cet audit.</p>
+          </div>
         {% endif %}
+        {% if not ns_orga.has_orga %}
+          <p style="color:#999; font-size:13px;">Aucun périmètre organisationnel ou fonctionnel extrait.</p>
+        {% endif %}
+      </div>
       </div>
 
       <!-- Répartition officielle des écarts -->
@@ -469,17 +499,29 @@ tr:hover td { background:#f8fafc; }
     <!-- ONGLET TECHNIQUE -->
     <div id="tab-tech" class="tab-content">
       <div class="grid2">
-        <!-- Périmètre technique -->
+        <!-- Périmètres Dynamiques (Volet Technique) -->
         <div class="card">
-          <h2>Périmètre technique (§4.1 — audit de configuration)</h2>
-          {% if audit.perimetre_technique %}
-          <ul class="perimetre-list">
-            {% for p in audit.perimetre_technique %}
-            <li>{{ p }}</li>
+          <h2>Périmètres Techniques</h2>
+          {% set ns_tech = namespace(has_tech=false) %}
+          {% if audit.perimetres %}
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+            {% for nom_perimetre, elements in audit.perimetres.items() %}
+              {% if 'technique' in nom_perimetre|lower %}
+                {% set ns_tech.has_tech = true %}
+                <div>
+                  <h3 style="font-size:14px; margin-bottom: 8px;">{{ nom_perimetre }}</h3>
+                  <ul class="perimetre-list">
+                    {% for p in elements %}
+                    <li>{{ p }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
             {% endfor %}
-          </ul>
-          {% else %}
-          <p style="color:#999; font-size:13px;">Non disponible pour cet audit.</p>
+            </div>
+          {% endif %}
+          {% if not ns_tech.has_tech %}
+            <p style="color:#999; font-size:13px;">Aucun périmètre technique extrait.</p>
           {% endif %}
         </div>
         
@@ -553,8 +595,23 @@ def dashboard():
     db = get_db()
     cur = db.cursor()
 
-    cur.execute("SELECT * FROM audits ORDER BY id DESC LIMIT 1")
+    cur.execute("SELECT id, hash_sha256 FROM audits ORDER BY id DESC")
+    all_audits = cur.fetchall()
+
+    audit_id = request.args.get("id", type=int)
+    if audit_id:
+        cur.execute("SELECT * FROM audits WHERE id = %s", (audit_id,))
+    else:
+        cur.execute("SELECT * FROM audits ORDER BY id DESC LIMIT 1")
     audit = cur.fetchone()
+
+    if not audit and all_audits:
+        fallback_id = all_audits[0]["id"]
+        cur.execute("SELECT * FROM audits WHERE id = %s", (fallback_id,))
+        audit = cur.fetchone()
+
+    if not audit:
+        return "Aucun audit trouvé", 404
 
     cur.execute("SELECT * FROM evaluations_conformite WHERE audit_id = %s ORDER BY id DESC LIMIT 1", (audit["id"],))
     eval_ = cur.fetchone()
@@ -619,6 +676,7 @@ def dashboard():
         nc_total=nc_total, nc_a_verifier=nc_a_verifier,
         couverture=couverture, nb_clauses_total=nb_clauses_total,
         nb_ecarts_par_type=nb_ecarts_par_type,
+        all_audits=all_audits,
     )
 
 @app.route("/api/alerts", methods=["POST"])
