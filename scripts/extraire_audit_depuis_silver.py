@@ -58,12 +58,19 @@ def traiter(nom_fichier_bronze: str) -> None:
         print(f"Ce rapport a déjà été traité (audit id={audit_existant_id}). Aucune action effectuée.")
         return
 
-    # 3. Parsing Docling — fonctionne sur un fichier LOCAL
+    # 3. Parsing (Docling pour PDF, python-docx pour DOCX) — fonctionne sur un fichier LOCAL
     chemin_temp = Path(f"_temp_{nom_fichier_bronze}")
     chemin_temp.write_bytes(contenu)
 
     try:
-        document = DoclingParseur().parser(chemin_temp)
+        if chemin_temp.suffix.lower() in (".docx", ".doc"):
+            from dgssi_platform.infrastructure.parsing.office.docx_parseur import DocxParseur
+            logger.info("Format DOCX detecté — utilisation de DocxParseur (python-docx)")
+            document = DocxParseur().parser(chemin_temp)
+        else:
+            from dgssi_platform.infrastructure.parsing.docling.docling_parseur import DoclingParseur
+            logger.info("Format PDF detecté — utilisation de DoclingParseur")
+            document = DoclingParseur().parser(chemin_temp)
     finally:
         chemin_temp.unlink(missing_ok=True)
 
