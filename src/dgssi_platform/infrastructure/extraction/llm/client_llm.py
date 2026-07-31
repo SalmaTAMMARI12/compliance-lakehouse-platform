@@ -8,11 +8,11 @@ import json
 from pathlib import Path
 from typing import Any
 from dgssi_platform.shared.logging import get_logger
-
 import os
+from dotenv import load_dotenv
 
 logger = get_logger(__name__)
-
+load_dotenv()
 _MODEL_PATH = Path(os.environ.get("LLM_MODEL_PATH", ""))
 _llm_instance = None
 
