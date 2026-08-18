@@ -28,12 +28,20 @@ minio/data/
 postgres_data/
 
 # Airflow
-airflow/logs/.coverage
+airflow/logs/
+
+# dbt — artefacts de build (reproductibles via dbt run / dbt deps)
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+
+# Tests et couverture
+.pytest_cache/
+.coverage
 
 # Modèles LLM locaux
 *.gguf
 
-# Tests et distribution
-.pytest_cache/
+# Distribution Python
 dist/
 *.egg-info/
