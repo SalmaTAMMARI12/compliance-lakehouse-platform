@@ -88,8 +88,6 @@ services:
     volumes:
       - .:/opt/airflow/project # Tout le projet
       - ./airflow/dags:/opt/airflow/dags
-      # Note: pas de volume airflow_data pour forcer un état propre
-      #       Les métadonnées Airflow utilisent SQLite interne (SequentialExecutor)
     command: standalone
     depends_on:
       postgres:
@@ -113,6 +111,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # ════════════════════════════════════════════════════
+  # MONITORING — cADVISOR
+  # Surveille tous les conteneurs Docker (CPU, RAM, réseau, disque)
+  # ════════════════════════════════════════════════════
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: dgssi-cadvisor
+    networks:
+      - dgssi-network
+    ports:
+      - "8090:8080"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      - //sys:/sys:ro
+      - //var/lib/docker:/var/lib/docker:ro
     restart: unless-stopped
 
   # ════════════════════════════════════════════════════

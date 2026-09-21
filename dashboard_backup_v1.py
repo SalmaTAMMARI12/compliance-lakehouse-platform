@@ -63,21 +63,16 @@ HTML = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: 'Inter', sans-serif; background: #0a192f url('/static/bg_dgssi.jpg') no-repeat center center fixed; background-size: cover; color:#1a1a2e; line-height:1.5; }
-body::before { content:''; position:fixed; top:0; left:0; width:100%; height:100%; background: linear-gradient(180deg, rgba(10,25,47,0.6) 0%, rgba(10,25,47,0.4) 30%, rgba(10,25,47,0.55) 100%); pointer-events:none; z-index:-2; }
-body::after { content:''; position:fixed; top:0; left:0; width:100%; height:100%; background: url('/static/dgssi_logo.svg') no-repeat center 60%; background-size: 30%; opacity:0.06; pointer-events:none; z-index:-1; }
+body { font-family: 'Inter', sans-serif; background:#f4f7f6; color:#1a1a2e; line-height:1.5; }
 
-select option { color:#1a1a2e !important; background:white !important; padding:8px; }
-
-header { background:linear-gradient(135deg,rgba(10,25,47,0.92),rgba(23,42,69,0.95)), url('/static/bg_dgssi.jpg') center/cover no-repeat; color:white; padding:28px 40px; display:flex; align-items:center; gap:15px; box-shadow:0 8px 32px rgba(0,0,0,0.25); position:relative; overflow:hidden; }
-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; background:linear-gradient(90deg,#c1272d,#f7941d,#00a651,#c1272d); }
-header h1 { font-size:24px; font-weight:700; letter-spacing:-0.5px; text-shadow:0 2px 4px rgba(0,0,0,0.3); }
+header { background:linear-gradient(135deg,#0a192f,#172a45); color:white; padding:20px 40px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+header h1 { font-size:24px; font-weight:700; letter-spacing:-0.5px; }
 header span { font-size:13px; opacity:0.8; font-weight:500; }
 
-.container { max-width:1400px; margin:0 auto; padding:0 30px 30px 30px; }
+.container { max-width:1400px; margin:40px auto; padding:0 30px; }
 
 .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-bottom:30px; }
-.kpi { background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:16px; padding:24px; box-shadow:0 8px 32px rgba(0,0,0,0.15); border-left:5px solid #0a192f; border-top:1px solid rgba(255,255,255,0.6); transition:transform 0.2s ease, box-shadow 0.2s ease; }
+.kpi { background:white; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,0.03); border-left:5px solid #0a192f; transition:transform 0.2s ease, box-shadow 0.2s ease; }
 .kpi:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.06); }
 .kpi .val { font-size:36px; font-weight:700; color:#0a192f; letter-spacing:-1px; }
 .kpi .lbl { font-size:13px; color:#64748b; margin-top:8px; font-weight:500; }
@@ -89,7 +84,7 @@ header span { font-size:13px; opacity:0.8; font-weight:500; }
 .kpi.ok .val { color:#10b981; }
 
 .ecarts-row { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-bottom:30px; }
-.ecart-box { background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:16px; padding:20px 24px; box-shadow:0 8px 32px rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.6); text-align:center; transition:transform 0.2s ease; }
+.ecart-box { background:white; border-radius:16px; padding:20px 24px; box-shadow:0 4px 20px rgba(0,0,0,0.03); text-align:center; transition:transform 0.2s ease; }
 .ecart-box:hover { transform:translateY(-2px); }
 .ecart-box .val { font-size:32px; font-weight:700; }
 .ecart-box .lbl { font-size:13px; color:#64748b; margin-top:8px; font-weight:500; }
@@ -100,8 +95,7 @@ header span { font-size:13px; opacity:0.8; font-weight:500; }
 
 .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
 
-.card { background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:16px; padding:28px; box-shadow:0 8px 32px rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.6); transition:transform 0.2s ease, box-shadow 0.2s ease; }
-.card:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(0,0,0,0.2); }
+.card { background:white; border-radius:16px; padding:28px; box-shadow:0 4px 20px rgba(0,0,0,0.03); }
 .card h2 { font-size:16px; font-weight:600; color:#0a192f; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; }
 
 table { width:100%; border-collapse:collapse; font-size:13px; }
@@ -138,12 +132,11 @@ tr:hover td { background:#f8fafc; }
 .meth-llm { background:#f3e8ff; color:#7e22ce; }
 
 /* Tabs Styles */
-.tabs-wrapper { background:rgba(255,255,255,0.88); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:0 28px; box-shadow:0 4px 16px rgba(0,0,0,0.08); border-bottom: none; }
-.tab-container { margin-top: 0; background:rgba(255,255,255,0.82); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:0; padding:24px 28px 28px 28px; box-shadow:0 8px 32px rgba(0,0,0,0.12); }
-.tabs { display: flex; gap: 6px; padding: 12px 0; margin-bottom: 0; border-bottom: none; }
-.tab-btn { padding: 10px 22px; background: transparent; border: 1.5px solid transparent; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: #64748b; font-family: inherit; transition: all 0.25s ease; letter-spacing: 0.2px; }
-.tab-btn:hover { background: rgba(10,25,47,0.06); color: #0a192f; border-color: rgba(10,25,47,0.1); }
-.tab-btn.active { background: #0a192f; color: white; border-color: #0a192f; box-shadow: 0 4px 14px rgba(10,25,47,0.3); }
+.tab-container { margin-top: 10px; }
+.tabs { display: flex; gap: 16px; border-bottom: 2px solid #e2e8f0; margin-bottom: 24px; }
+.tab-btn { padding: 14px 24px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 15px; font-weight: 600; color: #64748b; font-family: inherit; transition:all 0.2s ease; }
+.tab-btn:hover { color: #0a192f; }
+.tab-btn.active { color: #0a192f; border-bottom-color: #3b82f6; }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -192,13 +185,14 @@ tr:hover td { background:#f8fafc; }
 
 <header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px;">
   <div style="display:flex; align-items:center;">
-    <img src="/static/dgssi_logo.svg" alt="DGSSI" style="height: 65px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));" onerror="this.style.display='none'">
+    <!-- Le logo sera chargé depuis le dossier 'static' que vous devrez créer à côté de dashboard.py -->
+    <img src="/static/dgssi_logo.svg" alt="DGSSI" style="height: 60px; object-fit: contain; background: white; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);" onerror="this.style.display='none'">
   </div>
   <div style="text-align: center;">
     <h1 style="margin:0; font-size:24px; font-weight:700; letter-spacing:-0.5px;">Plateforme de Conformité DGSSI</h1>
     <span style="color:#cbd5e1; font-size:14px;"></span>
     <form method="get" action="/" style="margin-top: 10px;">
-        <select name="id" onchange="this.form.submit()" style="padding: 10px 20px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); font-size: 14px; max-width: 380px; text-overflow: ellipsis; background: rgba(255,255,255,0.12); color: white; font-weight: 600; backdrop-filter: blur(12px); cursor: pointer; font-family: inherit; appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22><path d=%22M1 1l5 5 5-5%22 stroke=%22white%22 fill=%22none%22 stroke-width=%222%22/></svg>'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+        <select name="id" onchange="this.form.submit()" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 300px; text-overflow: ellipsis;">
             {% for a in all_audits %}
             <option value="{{ a.id }}" {% if a.id == audit.id %}selected{% endif %}>
                 Rapport #{{ a.id }} {% if a.hash_sha256 %} - {{ a.hash_sha256 }}{% endif %}
@@ -208,8 +202,8 @@ tr:hover td { background:#f8fafc; }
     </form>
   </div>
   <div style="display:flex; justify-content: flex-end; gap:10px;">
-    <button class="btn-print" onclick="window.printExecutiveSummary()" style="background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1)); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 11px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease; backdrop-filter: blur(10px); font-size:13px; font-family:inherit; letter-spacing:0.3px;" onmouseover="this.style.background='linear-gradient(135deg,rgba(255,255,255,0.3),rgba(255,255,255,0.15))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.1))'">
-       Synthèse Exécutive
+    <button class="btn-print" onclick="window.printExecutiveSummary()" style="background: white; color: #0a192f; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s ease;">
+       Télécharger Synthèse Exécutive
     </button>
   </div>
 </header>
@@ -325,9 +319,7 @@ tr:hover td { background:#f8fafc; }
     <div class="tabs">
       <button class="tab-btn active" onclick="openTab(event, 'tab-general')">Vue d'Ensemble</button>
       <button class="tab-btn" onclick="openTab(event, 'tab-orga')">Volet Organisationnel — Conformité</button>
-      {% if has_tech_data %}
       <button class="tab-btn" onclick="openTab(event, 'tab-tech')">Volet Technique — Architecture</button>
-      {% endif %}
     </div>
 
     <!-- ONGLET VUE GÉNÉRALE -->
@@ -402,6 +394,7 @@ tr:hover td { background:#f8fafc; }
           <p style="color:#999; font-size:13px;">Aucun périmètre organisationnel ou fonctionnel extrait.</p>
         {% endif %}
       </div>
+      </div>
 
       <!-- Répartition officielle des écarts -->
       <div class="ecarts-row">
@@ -441,7 +434,7 @@ tr:hover td { background:#f8fafc; }
             <td style="font-size:11px; color:#666; max-width:350px;">{{ c.clauses_str }}</td>
             <td>
               {% if ns.vrais_constats == 0 %}
-                <span class="badge badge-green">CONFORME</span>
+                <span class="badge badge-green">✓ CONFORME</span>
               {% else %}
                 <span class="badge badge-orange">{{ ns.vrais_constats }} CONSTAT(S)</span>
               {% endif %}
@@ -495,7 +488,7 @@ tr:hover td { background:#f8fafc; }
             {% endfor %}
           </table>
         {% else %}
-          <p style="color: #28a745; font-size: 13px; font-weight: bold; margin-top: 10px;">Conforme : Aucun écart de conformité relevé.</p>
+          <p style="color: #28a745; font-size: 13px; font-weight: bold; margin-top: 10px;">✓ Conforme : Aucun écart de conformité relevé.</p>
         {% endif %}
       </div>
       {% endfor %}
@@ -528,6 +521,7 @@ tr:hover td { background:#f8fafc; }
             </div>
           {% endif %}
           {% if not ns_tech.has_tech %}
+            <p style="color:#999; font-size:13px;">Aucun périmètre technique extrait.</p>
           {% endif %}
         </div>
         
@@ -580,7 +574,6 @@ function openTab(evt, tabId) {
     document.getElementById(tabId).classList.add('active');
     evt.currentTarget.classList.add('active');
 }
-
 
 function printFullDashboard() {
     document.body.classList.remove('print-summary');
@@ -673,11 +666,6 @@ def dashboard():
 
     nb_ecarts_par_type = audit.get("nb_ecarts_par_type") or {}
 
-    # Détermine si l'onglet Technique doit être affiché
-    perimetres = audit.get("perimetres") or {}
-    has_tech_perimetre = any("technique" in k.lower() for k in perimetres)
-    has_tech_data = bool(resultats) or has_tech_perimetre
-
     db.close()
 
     return render_template_string(
@@ -689,7 +677,6 @@ def dashboard():
         couverture=couverture, nb_clauses_total=nb_clauses_total,
         nb_ecarts_par_type=nb_ecarts_par_type,
         all_audits=all_audits,
-        has_tech_data=has_tech_data,
     )
 
 @app.route("/api/alerts", methods=["POST"])

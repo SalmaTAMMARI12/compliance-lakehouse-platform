@@ -521,17 +521,120 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "id": 200,
+      "title": "🖥️ Supervision des conteneurs Docker (cAdvisor)",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 41 },
+      "id": 201,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "label_replace(rate(container_cpu_usage_seconds_total{id=~\"/docker/[a-f0-9]+\"}[2m]) * 100, \"container\", \"$1\", \"id\", \"/docker/(.{12}).*\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU par conteneur (%)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 49 },
+      "id": 202,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "label_replace(container_memory_usage_bytes{id=~\"/docker/[a-f0-9]+\"}, \"container\", \"$1\", \"id\", \"/docker/(.{12}).*\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "title": "RAM utilisée par conteneur",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
+      "id": 203,
+      "options": { "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "label_replace(rate(container_network_receive_bytes_total{id=~\"/docker/[a-f0-9]+\"}[2m]), \"container\", \"$1\", \"id\", \"/docker/(.{12}).*\")",
+          "legendFormat": "{{container}} ↓",
+          "refId": "A"
+        }
+      ],
+      "title": "Réseau — Données reçues",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 },
+      "id": 204,
+      "options": { "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "label_replace(rate(container_network_transmit_bytes_total{id=~\"/docker/[a-f0-9]+\"}[2m]), \"container\", \"$1\", \"id\", \"/docker/(.{12}).*\")",
+          "legendFormat": "{{container}} ↑",
+          "refId": "A"
+        }
+      ],
+      "title": "Réseau — Données envoyées",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["postgresql", "dgssi", "monitoring"],
+  "tags": ["postgresql", "dgssi", "monitoring", "docker", "infrastructure"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "PostgreSQL — DGSSI Compliance",
+  "title": "Supervision Technique — Plateforme DGSSI",
   "uid": "dgssi-postgres-dashboard",
-  "version": 1
+  "version": 2
 }

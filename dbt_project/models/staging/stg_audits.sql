@@ -9,8 +9,8 @@ select
     date_extraction,
     confiance_extraction,
     confiance_par_categorie,
-    chemin_gold,
+    hash_sha256 || '.json' as chemin_gold,
     nb_ecarts_par_type,
-    perimetre_fonctionnel,
-    perimetre_technique
+    perimetres ->> 'Périmètre Fonctionnel' as perimetre_fonctionnel,
+    perimetres ->> 'Périmètre Technique' as perimetre_technique
 from {{ source('dgssi', 'audits') }}

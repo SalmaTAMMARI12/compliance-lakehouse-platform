@@ -102,7 +102,7 @@ models:
         description: Statut de conformite (Conforme, Non conforme, Partiellement conforme).
         tests:
           - accepted_values:
-              values: ['CONFORME', 'NON_CONFORME', 'SOUS_RESERVES']
+              values: ['CONFORME', 'NON_CONFORME', 'SOUS_RESERVES', 'INDETERMINE']
       - name: taux_conformite_global
         description: Taux de conformite global (entre 0 et 100).
         tests:

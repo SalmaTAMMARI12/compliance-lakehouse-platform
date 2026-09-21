@@ -19,3 +19,9 @@ scrape_configs:
   # - job_name: 'node'
   #   static_configs:
   #     - targets: ['node-exporter:9100']
+
+  # Métriques de tous les conteneurs Docker via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: /metrics
