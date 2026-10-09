@@ -9,8 +9,9 @@
 
 **AuditDataPlatform** est une plateforme de données complète qui transforme des rapports d'audit bruts (PDF, DOCX) en indicateurs de conformité exploitables, sans intervention humaine systématique. Elle s'appuie sur un pipeline **ELT** combinant un **Data Lake objet** (MinIO — zones Bronze/Silver/Gold) pour le stockage et la traçabilité, et un **Data Warehouse analytique** (PostgreSQL + dbt) pour la modélisation et le reporting.
 
+
 ```
-Rapport PDF/DOCX  ──▶  Parsing  ──▶  Extraction Hybride (LLM + Regex)  ──▶  PostgreSQL  ──▶  Dashboard
+Fichier déposé  ──▶  Apache NiFi (détection auto)  ──▶  MinIO Bronze  ──▶  Parsing  ──▶  Extraction Hybride (LLM + Regex)  ──▶  PostgreSQL  ──▶  Dashboard
 ```
 
 ---
@@ -24,10 +25,26 @@ Rapport PDF/DOCX  ──▶  Parsing  ──▶  Extraction Hybride (LLM + Regex
 ## Architecture Technique
 
 ```
+                  ┌──────────────────────────────────────┐
+                  │       DÉPÔT (data/private/)           │
+                  │  Utilisateur dépose PDF ou DOCX       │
+                  └──────────────────┬───────────────────┘
+                                     │ Surveillance automatique
+                                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              APACHE NIFI 1.27 — Couche d'Ingestion              │
+│  · Détection automatique du nouveau fichier dans le répertoire  │
+│  · Validation et routage selon le format (PDF / DOCX)          │
+│  · Attribution UUID + horodatage + métadonnées de contexte     │
+│  · Upload sécurisé vers MinIO (zone Bronze)                    │
+│  Flow configuré et exporté : docker/nifi/flow_export.json      │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ Upload automatique
+                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     ZONE BRONZE (MinIO)                         │
 │           Fichiers bruts · PDF · DOCX · Originaux              │
-│                   Ingestion via Apache NiFi                     │
+│                   Conservation intégrale des sources            │
 └────────────────────────┬────────────────────────────────────────┘
                          │ Parsing
                          ▼
