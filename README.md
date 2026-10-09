@@ -1,4 +1,4 @@
-# AuditLens — Plateforme d'Analyse Automatisée des Audits DNSSI
+# AuditDataPlatform — Plateforme Data d'Audit Automatisé
 
 > **Projet de Fin d'Études** · DGSSI · Division Contrôle et Expertise  
 > Automatisation du traitement des rapports d'audit de conformité des Infrastructures d'Importance Vitale (IIV) au référentiel national **DNSSI v2**.
@@ -7,7 +7,7 @@
 
 ## Aperçu
 
-**AuditLens** est une plateforme Data Lakehouse complète qui transforme des rapports d'audit bruts (PDF, DOCX) en indicateurs de conformité exploitables, sans intervention humaine systématique.
+**AuditDataPlatform** est une plateforme de données complète qui transforme des rapports d'audit bruts (PDF, DOCX) en indicateurs de conformité exploitables, sans intervention humaine systématique. Elle s'appuie sur un pipeline **ELT** combinant un **Data Lake objet** (MinIO — zones Bronze/Silver/Gold) pour le stockage et la traçabilité, et un **Data Warehouse analytique** (PostgreSQL + dbt) pour la modélisation et le reporting.
 
 ```
 Rapport PDF/DOCX  ──▶  Parsing  ──▶  Extraction Hybride (LLM + Regex)  ──▶  PostgreSQL  ──▶  Dashboard
