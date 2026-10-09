@@ -10,10 +10,6 @@
 **AuditDataPlatform** est une plateforme de données complète qui transforme des rapports d'audit bruts (PDF, DOCX) en indicateurs de conformité exploitables, sans intervention humaine systématique. Elle s'appuie sur un pipeline **ELT** combinant un **Data Lake objet** (MinIO — zones Bronze/Silver/Gold) pour le stockage et la traçabilité, et un **Data Warehouse analytique** (PostgreSQL + dbt) pour la modélisation et le reporting.
 
 
-```
-Fichier déposé  ──▶  Apache NiFi (détection auto)  ──▶  MinIO Bronze  ──▶  Parsing  ──▶  Extraction Hybride (LLM + Regex)  ──▶  PostgreSQL  ──▶  Dashboard
-```
-
 ---
 
 ## Tableau de Bord
